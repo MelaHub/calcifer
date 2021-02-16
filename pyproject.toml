@@ -13,7 +13,7 @@ tdqm = "^0.0.1"
 [tool.poetry.dev-dependencies]
 
 [tool.poetry.scripts]
-check_github = "calcifer.calcifer:main"
+calcifer = "calcifer.calcifer:main"
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"

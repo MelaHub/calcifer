@@ -79,6 +79,6 @@ def write_to_file(contributors_repo, out_file_path):
 def main(github_user, github_token, github_org, out_file_path, n_contrib):
     repos = get_all_repos(github_org, github_user, github_token)
     print(f'Found {len(repos)} repositories')
+    print(f'Retrieving now all contributors...')
     contributors_repo = map(lambda x: get_contributors_for_repo(x, github_user, github_token, n_contrib), tqdm(repos))
     write_to_file(contributors_repo, out_file_path)
-
