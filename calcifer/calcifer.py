@@ -28,13 +28,17 @@ def get_all_repos(github_org, github_user, github_token):
             page = None
     return results
 
-def get_contributors_for_repo(repo, github_user, github_token, n_contrib):
+def get_contributors_for_repo(repo, github_user, github_token):
     response = requests.get(repo['contributors_url'].replace('{/collaborator}', ''), auth = HTTPBasicAuth(github_user, github_token))
     content = []
     if response.status_code != 200 and response.status_code != 204:
         raise Exception(f"Something went wrong while fetching details of repo {repo}")
     elif response.status_code == 200:
-        content = json.loads(response.content)[0:3]
+        content = json.loads(response.content)
+    return content
+
+def get_top_contributors_for_repo(repo, github_user, github_token, n_contrib):
+    content = get_contributors_for_repo(repo, github_user, github_token)
     return {
         'full_name': repo['full_name'],
         'total_commits': sum([x['contributions'] for x in content]),
@@ -80,7 +84,7 @@ def main_contributors(github_user, github_token, github_org, out_file_path, n_co
     repos = get_all_repos(github_org, github_user, github_token)
     print(f'Found {len(repos)} repositories')
     print(f'Retrieving now all contributors...')
-    contributors_repo = map(lambda x: get_contributors_for_repo(x, github_user, github_token, n_contrib), tqdm(repos))
+    contributors_repo = map(lambda x: get_top_contributors_for_repo(x, github_user, github_token, n_contrib), tqdm(repos))
     write_to_file(contributors_repo, out_file_path)
 
 @click.command()
