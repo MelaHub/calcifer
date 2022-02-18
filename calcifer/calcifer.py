@@ -76,9 +76,24 @@ def write_to_file(contributors_repo, out_file_path):
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--n-contrib", type=int, default=3)
-def main(github_user, github_token, github_org, out_file_path, n_contrib):
+def main_contributors(github_user, github_token, github_org, out_file_path, n_contrib):
     repos = get_all_repos(github_org, github_user, github_token)
     print(f'Found {len(repos)} repositories')
     print(f'Retrieving now all contributors...')
     contributors_repo = map(lambda x: get_contributors_for_repo(x, github_user, github_token, n_contrib), tqdm(repos))
     write_to_file(contributors_repo, out_file_path)
+
+@click.command()
+@click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-org", type=str, required=True)
+@click.option("--out-file-path", type=str, required=True)
+def first_contribution(github_user, github_token, github_org, out_file_path):
+    print('Hi there')
+
+@click.group()
+def cli():
+    pass
+
+cli.add_command(main_contributors)
+cli.add_command(first_contribution)
