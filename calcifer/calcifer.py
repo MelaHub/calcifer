@@ -5,17 +5,19 @@ import click
 import csv
 from tqdm import tqdm
 
+REPO_PAGE_SIZE = 100
+
 def print_iterator(it):
     for x in it:
         print(x, end=' ')
     print('')  
 
-def get_all_repos(github_org, github_user, github_token):
+def get_all_repos(github_org, github_user, github_token, page_size=REPO_PAGE_SIZE, max_results=None):
     print(f'Retrieving all {github_org} repos - hold on...')
-    page_size = 100
+    page_size = page_size
     page = 0
     results = []
-    while page is not None:
+    while page is not None and max_results is not None and len(results) < max_results:
         response = requests.get(f'https://api.github.com/orgs/{github_org}/repos?per_page={page_size}&page={page}', auth = HTTPBasicAuth(github_user, github_token))
         if response.status_code != 200:
             raise Exception("Something went wrong while calling the github api")
@@ -44,6 +46,15 @@ def get_top_contributors_for_repo(repo, github_user, github_token, n_contrib):
         'total_commits': sum([x['contributions'] for x in content]),
         'contributors': [{'login': c['login'], 'contributions': c['contributions']} for c in content[0:n_contrib]]
     }
+
+def get_commits_for_repo(repo, github_user, github_token):
+    response = requests.get(repo['commits_url'], auth = HTTPBasicAuth(github_user, github_token))
+    content = []
+    if response.status_code != 200 and response.status_code != 204:
+        raise Exception(f"Something went wrong while fetching details of repo {repo}")
+    elif response.status_code == 200:
+        content = json.loads(response.content)
+    return content
 
 def write_to_file(contributors_repo, out_file_path):
     def get_key_by_index_or_empty(contributors, index, key):
@@ -93,7 +104,12 @@ def main_contributors(github_user, github_token, github_org, out_file_path, n_co
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 def first_contribution(github_user, github_token, github_org, out_file_path):
-    print('Hi there')
+    repos = get_all_repos(github_org, github_user, github_token, 1, 1)
+    print(f'Found {len(repos)} repositories')
+    print(f'Retrieving now all contributors...')
+    for r in repos:
+        print(get_commits_for_repo(r, github_user, github_token))
+        break
 
 @click.group()
 def cli():
