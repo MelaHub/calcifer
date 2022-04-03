@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 from calcifer.services.github import get_all_repos, get_contributors_for_repo, get_commits_for_repo, get_commits_for_repo_with_tag, get_commit_with_sha
 
+TAG_RELEASE = 'release-2021'
 
 def print_iterator(it):
     for x in it:
@@ -151,7 +152,7 @@ def audit_releases(github_user, github_token, github_org, out_file_path):
     repos = get_all_repos(github_org, github_user, github_token)
     print(f'Found {len(repos)} repositories')
     print(f'Retrieving now all releases of this year...')
-    commits = [c for c in map(lambda x: get_commits_with_tag(x, github_user, github_token, 'release-2021'), tqdm(repos))]
+    commits = [c for c in map(lambda x: get_commits_with_tag(x, github_user, github_token, TAG_RELEASE), tqdm(repos))]
     write_commits_on_file([c for commits_per_repo in commits for c in commits_per_repo], out_file_path)
 
 @click.group()
