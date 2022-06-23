@@ -12,6 +12,7 @@ from calcifer.services.github import get_all_repos, get_contributors_for_repo, g
 
 TAG_RELEASE = 'release-2021'
 
+
 def print_iterator(it):
     for x in it:
         print(x, end=' ')

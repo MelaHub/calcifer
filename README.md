@@ -20,5 +20,5 @@ The output is a CSV file with the top n contributors from the same org, with n d
 
 ## First contribution
 
-`poetry run calcifer first-contributions --github-org <orgname> --out-file-path <fullpath> --github-user <githubuser> --github-token <githubtoken>`
+`poetry run calcifer first-contribution --github-org <orgname> --out-file-path <fullpath> --github-user <githubuser> --github-token <githubtoken>`
   
