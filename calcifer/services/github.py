@@ -6,8 +6,6 @@ import json
 
 REPO_PAGE_SIZE = 100
 
-IGNORE_REPOS = ['public-keys', 'zelda', 'scikit-eLCS-forked']
-
 
 def _get_all_pages(url, query_params, github_user, github_token, stop_if=lambda x: False, page_size=REPO_PAGE_SIZE, max_results=None):
     page_size = page_size if max_results is None or max_results > page_size else max_results
@@ -62,7 +60,9 @@ def get_commits_for_repo(repo, github_user, github_token):
     master_response = _get_all_pages(repo['commits_url'].replace('{/sha}', ''), {'sha': 'master'}, github_user, github_token, stop_if = stop_if)
     return main_response + master_response
 
-def get_all_repos(github_org, github_user, github_token):
+def get_all_repos(github_org, github_user, github_token, ignore_repos=None):
     print(f'Retrieving all {github_org} repos - hold on...')
+    if not ignore_repos:
+        ignore_repos = []
     repos = _get_all_pages(f'https://api.github.com/orgs/{github_org}/repos', {}, github_user, github_token)
-    return [r for r in repos if r['name'] not in IGNORE_REPOS]
+    return [r for r in repos if r['name'] not in ignore_repos]

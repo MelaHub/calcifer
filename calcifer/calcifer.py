@@ -61,8 +61,9 @@ def write_main_contributors_to_file(contributors_repo, out_file_path):
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--n-contrib", type=int, default=3)
-def main_contributors(github_user, github_token, github_org, out_file_path, n_contrib):
-    repos = get_all_repos(github_org, github_user, github_token)
+@click.option("--ignore-repo", "-i", type=str, multiple=True)
+def main_contributors(github_user, github_token, github_org, out_file_path, n_contrib, ignore_repo):
+    repos = get_all_repos(github_org, github_user, github_token, ignore_repo)
     print(f'Found {len(repos)} repositories')
     print(f'Retrieving now all contributors...')
     contributors_repo = map(lambda x: get_top_contributors_for_repo(x, github_user, github_token, n_contrib), tqdm(repos))
@@ -132,8 +133,9 @@ def write_first_contribution_to_file(first_contributions, out_file_path):
 @click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
-def first_contribution(github_user, github_token, github_org, out_file_path):
-    repos = get_all_repos(github_org, github_user, github_token)
+@click.option("--ignore-repo", "-i", type=str, multiple=True)
+def first_contribution(github_user, github_token, github_org, out_file_path, ignore_repo):
+    repos = get_all_repos(github_org, github_user, github_token, ignore_repo)
     print(f'Found {len(repos)} repositories')
     print(f'Retrieving now all contributors...')
     first_contributions = {}
@@ -149,8 +151,9 @@ def first_contribution(github_user, github_token, github_org, out_file_path):
 @click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
-def audit_releases(github_user, github_token, github_org, out_file_path):
-    repos = get_all_repos(github_org, github_user, github_token)
+@click.option("--ignore-repo", "-i", type=str, multiple=True)
+def audit_releases(github_user, github_token, github_org, out_file_path, ignore_repo):
+    repos = get_all_repos(github_org, github_user, github_token, ignore_repo)
     print(f'Found {len(repos)} repositories')
     print(f'Retrieving now all releases of this year...')
     commits = [c for c in map(lambda x: get_commits_with_tag(x, github_user, github_token, TAG_RELEASE), tqdm(repos))]
