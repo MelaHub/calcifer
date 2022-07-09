@@ -159,6 +159,92 @@ def audit_releases(github_user, github_token, github_org, out_file_path, ignore_
     commits = [c for c in map(lambda x: get_commits_with_tag(x, github_user, github_token, TAG_RELEASE), tqdm(repos))]
     write_commits_on_file([c for commits_per_repo in commits for c in commits_per_repo], out_file_path)
 
+
+#TODO: parametrizzare progetto e created date
+@click.command()
+@click.option("--jira-user", envvar="JIRA_USER", type=str, required=True)
+@click.option("--jira-api-token", envvar="JIRA_API_TOKEN", type=str, required=True)
+@click.option("--jira-url", envvar="JIRA_URL", type=str, required=True, default='https://instapartners.atlassian.net')
+@click.option("--search-for-user", type=str, required=True)
+def issues_with_comments_by(jira_user, jira_api_token, jira_url, search_for_user):
+    issues_cache = './issues_cache.json'
+    if exists(issues_cache):
+        with open(issues_cache, 'r') as f:
+            issues = json.load(f)  
+    else:
+        issues = get_all_pages(
+            f'{jira_url}/rest/api/3/search', 
+            {'jql': 'project="Product support" AND createdDate > startOfYear()'}, 
+            'issues',
+            jira_user, 
+            jira_api_token)
+        with open(issues_cache, 'w') as f:
+            json.dump(issues, f)
+
+    comments_cache = './comments_by.json'
+    if exists(comments_cache):
+        with open(comments_cache, 'r') as f:
+            issues_with_comments_by = json.load(f)  
+    else:
+        issues_with_comments_by = [comment for comment in map(
+            lambda x: get_comments_by_issue(x, jira_url, jira_user, jira_api_token, search_for_user), tqdm(issues)) if comment]
+        with open(comments_cache, 'w') as f:
+            json.dump(issues_with_comments_by, f)
+
+    with open('comments.csv', 'w') as f:
+        f.write('issue,created\n')
+        for issue in issues_with_comments_by:
+            f.write(f'{issue[0]},{issue[1]}\n')
+
+def get_comments_by_issue(issue, jira_url, jira_user, jira_api_token, search_for_user):
+    comments = get_all_pages(
+        f'{jira_url}/rest/api/3/issue/{issue["key"]}/comment', {}, 'comments', jira_user, jira_api_token)
+    for comment in comments:
+        if comment['author']['displayName'] == search_for_user:
+            return [issue['key'], issue['fields']['created']]
+    return None
+
+@click.command()
+@click.option("--jira-user", envvar="JIRA_USER", type=str, required=True)
+@click.option("--jira-api-token", envvar="JIRA_API_TOKEN", type=str, required=True)
+@click.option("--jira-url", envvar="JIRA_URL", type=str, required=True, default='https://instapartners.atlassian.net')
+def issues_change_status_log(jira_user, jira_api_token, jira_url):
+    issues_cache = './issues_pfm_cache.json'
+    if exists(issues_cache):
+        with open(issues_cache, 'r') as f:
+            issues = json.load(f)  
+    else:
+        issues = get_all_pages(
+            f'{jira_url}/rest/api/3/search', 
+            {'jql': 'project="Platform" AND createdDate > startOfYear()'}, 
+            'issues',
+            jira_user, 
+            jira_api_token)
+        with open(issues_cache, 'w') as f:
+            json.dump(issues, f)
+
+    change_logs = []
+
+    for i in tqdm(issues):
+        change_log =  get_all_pages(
+            f'{jira_url}/rest/api/3/issue/{i["key"]}/changelog',
+            {}, 
+            'values',
+            jira_user, 
+            jira_api_token,
+            show_progress=False)
+        for log in change_log:
+            for field in log['items']:
+                if field['field'] == 'status':
+                    change_logs.append([i['key'], i['fields']['assignee']['displayName'], log['created'], field['fromString'], field['toString']])
+
+
+    import pdb; pdb.set_trace()
+    print(change_logs)
+    with open('change_status_log', 'w'):
+        json.dump(change_logs, f)
+    
+
 @click.group()
 def cli():
     pass
@@ -166,3 +252,6 @@ def cli():
 cli.add_command(main_contributors)
 cli.add_command(first_contribution)
 cli.add_command(audit_releases)
+
+cli.add_command(issues_with_comments_by)
+cli.add_command(issues_change_status_log)
