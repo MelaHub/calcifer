@@ -5,6 +5,7 @@ from tqdm import tqdm
 import math
 import json
 from pydantic import SecretStr, BaseModel, HttpUrl
+from typing import Callable
 
 REPO_PAGE_SIZE = 100
 
@@ -14,9 +15,11 @@ class RestPager(BaseModel):
     user: str
     token: SecretStr
     url: HttpUrl
+    page_size: int = REPO_PAGE_SIZE
 
-    def get_all_pages(self, path, query_params, collection_name, map_item=lambda item: item, show_progress=True):
-        def make_request(query_params):
+    def get_all_pages(self, path: str, query_params: dict, collection_name: str, map_item: Callable[dict, dict]=lambda item: item, show_progress: bool=True):
+        
+        def make_request(query_params: dict):
             response = requests.get(f'{self.url}{path}', params = query_params, auth = HTTPBasicAuth(self.user, self.token.get_secret_value()))
             if response.status_code in (404, 409):
                 return []
