@@ -36,8 +36,8 @@ class RestPager(BaseModel):
             self.start_at_param: 0
         })
         response = make_request(query_params)
-        page_number = math.ceil(response.json()[self.total_param] / self.page_size)
-        for i in tqdm(range(page_number), disable=not show_progress):
+        curr_res = json.loads(response.content) # TODO: I'm actually making an extra call here
+        for i in tqdm(range(0, curr_res[self.total_param], self.page_size), disable=not show_progress): # TODO: not sure if tdqm is just autocalculating the number of pages or what here
             response = make_request(query_params)
             curr_res = json.loads(response.content)
             if len(curr_res):
