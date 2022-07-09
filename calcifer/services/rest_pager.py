@@ -4,7 +4,7 @@ from requests.auth import HTTPBasicAuth
 from tqdm import tqdm
 import math
 import json
-from pydantic import SecretStr, BaseModel
+from pydantic import SecretStr, BaseModel, HttpUrl
 
 REPO_PAGE_SIZE = 100
 
@@ -13,7 +13,7 @@ class RestPager(BaseModel):
 
     user: str
     token: SecretStr
-    url: str # TODO(maybe there's a type for uri?)
+    url: HttpUrl
 
     def get_all_pages(self, path, query_params, collection_name, map_item=lambda item: item, show_progress=True):
         def make_request(query_params):

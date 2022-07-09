@@ -236,9 +236,10 @@ def issues_change_status_log(jira_user, jira_api_token, jira_url):
             for field in log['items']:
                 if field['field'] == 'status':
                     change_logs.append([i['key'], i['fields']['assignee']['displayName'], log['created'], field['fromString'], field['toString']])
+                break # TODO(remove this)
+            break # TODO(remove this)
+        break # TODO(remove this)
 
-
-    import pdb; pdb.set_trace()
     print(change_logs)
     with open('change_status_log', 'w'):
         json.dump(change_logs, f)
