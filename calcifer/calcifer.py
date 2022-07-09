@@ -214,10 +214,7 @@ def issues_change_status_log(jira_user, jira_api_token, jira_url):
     jira_pager = JiraPager(
         user=jira_user, 
         token=jira_api_token, 
-        url=jira_url,
-        start_at_param='startAt',
-        max_results_param='maxResults',
-        total_param='total')
+        url=jira_url)
     issues_cache = './issues_pfm_cache.json'
     if exists(issues_cache):
         with open(issues_cache, 'r') as f:
