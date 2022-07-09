@@ -27,19 +27,18 @@ class RestPager(BaseModel):
                 raise Exception("Something went wrong while calling the github api")
             return response
 
-        page_size = REPO_PAGE_SIZE
         issues = []
         query_params.update({
-            'maxResults': page_size,
+            'maxResults': self.page_size,
             'startAt': 0
         })
         response = make_request(query_params)
-        page_number = math.ceil(response.json()['total'] / page_size)
+        page_number = math.ceil(response.json()['total'] / self.page_size)
         for i in tqdm(range(page_number), disable=not show_progress):
             response = make_request(query_params)
             curr_res = json.loads(response.content)
             if len(curr_res):
-                query_params['startAt'] += page_size
+                query_params['startAt'] += self.page_size
                 valid_results = [map_item(res) for res in curr_res[collection_name]]
                 issues += valid_results
         return issues
