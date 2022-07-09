@@ -16,6 +16,9 @@ class RestPager(BaseModel):
     token: SecretStr
     url: HttpUrl
     page_size: int = REPO_PAGE_SIZE
+    start_at_param: str
+    max_results_param: str
+    total_param: str
 
     def get_all_pages(self, path: str, query_params: dict, collection_name: str, map_item: Callable[dict, dict]=lambda item: item, show_progress: bool=True):
         
@@ -29,16 +32,16 @@ class RestPager(BaseModel):
 
         issues = []
         query_params.update({
-            'maxResults': self.page_size,
-            'startAt': 0
+            self.max_results_param: self.page_size,
+            self.start_at_param: 0
         })
         response = make_request(query_params)
-        page_number = math.ceil(response.json()['total'] / self.page_size)
+        page_number = math.ceil(response.json()[self.total_param] / self.page_size)
         for i in tqdm(range(page_number), disable=not show_progress):
             response = make_request(query_params)
             curr_res = json.loads(response.content)
             if len(curr_res):
-                query_params['startAt'] += self.page_size
+                query_params[self.start_at_param] += self.page_size
                 valid_results = [map_item(res) for res in curr_res[collection_name]]
                 issues += valid_results
         return issues
