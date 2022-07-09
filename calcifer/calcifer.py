@@ -7,6 +7,8 @@ import csv
 from datetime import datetime
 import itertools
 from tqdm import tqdm
+from os.path import exists
+from calcifer.services.rest_pager import RestPager
 
 from calcifer.services.github import get_all_repos, get_contributors_for_repo, get_commits_for_repo, get_commits_for_repo_with_tag, get_commit_with_sha
 
@@ -209,29 +211,26 @@ def get_comments_by_issue(issue, jira_url, jira_user, jira_api_token, search_for
 @click.option("--jira-api-token", envvar="JIRA_API_TOKEN", type=str, required=True)
 @click.option("--jira-url", envvar="JIRA_URL", type=str, required=True, default='https://instapartners.atlassian.net')
 def issues_change_status_log(jira_user, jira_api_token, jira_url):
+    jira_pager = RestPager(user=jira_user, token=jira_api_token, url=jira_url)
     issues_cache = './issues_pfm_cache.json'
     if exists(issues_cache):
         with open(issues_cache, 'r') as f:
             issues = json.load(f)  
     else:
-        issues = get_all_pages(
-            f'{jira_url}/rest/api/3/search', 
+        issues = jira_pager.get_all_pages(
+            f'/rest/api/3/search', 
             {'jql': 'project="Platform" AND createdDate > startOfYear()'}, 
-            'issues',
-            jira_user, 
-            jira_api_token)
+            'issues')
         with open(issues_cache, 'w') as f:
             json.dump(issues, f)
 
     change_logs = []
 
     for i in tqdm(issues):
-        change_log =  get_all_pages(
-            f'{jira_url}/rest/api/3/issue/{i["key"]}/changelog',
+        change_log = jira_pager.get_all_pages(
+            f'/rest/api/3/issue/{i["key"]}/changelog',
             {}, 
             'values',
-            jira_user, 
-            jira_api_token,
             show_progress=False)
         for log in change_log:
             for field in log['items']:
