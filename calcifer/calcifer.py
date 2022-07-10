@@ -227,25 +227,27 @@ def issues_change_status_log(jira_user, jira_api_token, jira_url):
         with open(issues_cache, 'w') as f:
             json.dump(issues, f)
 
-    change_logs = []
+    change_log_cache = './change_status_log'
+    if exists(change_log_cache):
+        with open(change_log_cache, 'r') as f:
+            issues = json.load(f)  
+    else:
+        change_logs = []
 
-    for i in tqdm(issues):
-        change_log = jira_pager.get_all_pages(
-            f'/rest/api/3/issue/{i["key"]}/changelog',
-            {}, 
-            'values',
-            show_progress=False)
-        for log in change_log:
-            for field in log['items']:
-                if field['field'] == 'status':
-                    change_logs.append([i['key'], i['fields']['assignee']['displayName'], log['created'], field['fromString'], field['toString']])
-                break # TODO(remove this)
-            break # TODO(remove this)
-        break # TODO(remove this)
+        for i in tqdm(issues):
+            change_log = jira_pager.get_all_pages(
+                f'/rest/api/3/issue/{i["key"]}/changelog',
+                {}, 
+                'values',
+                show_progress=False)
+            for log in change_log:
+                for field in log['items']:
+                    if field['field'] == 'status':
+                        assignee = i['fields']['assignee']['displayName'] if i['fields']['assignee'] else None
+                        change_logs.append([i['key'], assignee, log['created'], field['fromString'], field['toString']])
 
-    print(change_logs)
-    with open('change_status_log', 'w'):
-        json.dump(change_logs, f)
+        with open(change_log_cache, 'w') as f:
+            json.dump(change_logs, f)
     
 
 @click.group()
