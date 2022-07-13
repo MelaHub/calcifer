@@ -5,11 +5,9 @@ import json
 from calcifer.services.rest_pager import RestPager
 
 class GithubPager(RestPager):
-    start_at_param: str = 'page',
-    max_results_param: str = 'page_size',
-    total_param: str = 'total'
-
-    # TODO: this doesn't work for github bcs it does not return the number of items :\
+    start_at_param: str = 'page'
+    max_results_param: str = 'per_page'
+    total_param: str = None
 
 def get_contributors_for_repo(repo, github_user, github_token):
     response = requests.get(repo['contributors_url'].replace('{/collaborator}', ''), auth = HTTPBasicAuth(github_user, github_token))
@@ -51,5 +49,5 @@ def get_all_repos(github_org, github_user, github_token, ignore_repos=None):
         user=github_user, 
         token=github_token, 
         url='https://api.github.com')
-    repos = github_pager.get_all_pages(f'/orgs/{github_org}/repos', {}, github_user, github_token)
+    repos = github_pager.get_all_pages(f'/orgs/{github_org}/repos', {}, None)
     return [r for r in repos if r['name'] not in ignore_repos]
