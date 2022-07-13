@@ -162,6 +162,20 @@ def audit_releases(github_user, github_token, github_org, out_file_path, ignore_
     write_commits_on_file([c for commits_per_repo in commits for c in commits_per_repo], out_file_path)
 
 
+@click.command()
+@click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-org", type=str, required=True)
+@click.option("--out-file-path", type=str, required=True)
+@click.option("--ignore-repo", "-i", type=str, multiple=True)
+def unprotected_repos(github_user, github_token, github_org, out_file_path, ignore_repo):
+    repos = get_all_repos(github_org, github_user, github_token, ignore_repo)
+    print(f'Found {len(repos)} repositories')
+    print(f'Checking whether the main branch is protected')
+    # commits = [c for c in map(lambda x: get_commits_with_tag(x, github_user, github_token, TAG_RELEASE), tqdm(repos))]
+    # write_commits_on_file([c for commits_per_repo in commits for c in commits_per_repo], out_file_path)
+
+
 #TODO: parametrizzare progetto e created date
 @click.command()
 @click.option("--jira-user", envvar="JIRA_USER", type=str, required=True)
@@ -257,6 +271,7 @@ def cli():
 cli.add_command(main_contributors)
 cli.add_command(first_contribution)
 cli.add_command(audit_releases)
+cli.add_command(unprotected_repos)
 
 cli.add_command(issues_with_comments_by)
 cli.add_command(issues_change_status_log)
