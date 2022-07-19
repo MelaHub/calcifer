@@ -10,7 +10,7 @@ from tqdm import tqdm
 from os.path import exists
 from calcifer.services.jira import JiraPager
 
-from calcifer.services.github import get_all_repos, get_contributors_for_repo, get_commits_for_repo, get_commits_for_repo_with_tag, get_commit_with_sha
+from calcifer.services.github import add_branch_protection, get_branch_protection, get_all_repos, get_contributors_for_repo, get_commits_for_repo, get_commits_for_repo_with_tag, get_commit_with_sha
 
 TAG_RELEASE = 'release-2021'
 
@@ -161,6 +161,38 @@ def audit_releases(github_user, github_token, github_org, out_file_path, ignore_
     commits = [c for c in map(lambda x: get_commits_with_tag(x, github_user, github_token, TAG_RELEASE), tqdm(repos))]
     write_commits_on_file([c for commits_per_repo in commits for c in commits_per_repo], out_file_path)
 
+def get_repo_protections(repo, github_user, github_token):
+    default_branch = repo['default_branch']
+    protection = get_branch_protection('credimi', repo['name'], github_user, github_token, default_branch)
+    required_status_check = protection.get('required_status_checks', {}).get('strict', False)
+    dismiss_stale_review = protection.get('required_pull_request_reviews', {}).get('dismiss_stale_reviews', False)
+    require_approving_review_count = protection.get('required_pull_request_reviews', {}).get('required_approving_review_count', 0)
+    allow_force_pushes = protection.get('allow_force_pushes', {}).get('enabled', True)
+    require_linear_history = protection.get('required_linear_history', {}).get('enabled', False)
+    
+    repo.update({
+        'required_status_checks': required_status_check,
+        'dismiss_stale_review': dismiss_stale_review,
+        'require_approving_review_count': require_approving_review_count,
+        'allow_force_pushes': allow_force_pushes,
+        'require_linear_history': require_linear_history,
+        'is_protection_missing': not bool(protection),
+        'is_protected_weird': require_linear_history and required_status_check and dismiss_stale_review and require_approving_review_count > 0 and not allow_force_pushes
+    }
+    )
+    return repo
+
+def write_repos_on_file(repo_details, out_file_path):
+    headers = ['name', 'required_status_checks', 'dismiss_stale_review','require_approving_review_count', 'allow_force_pushes', 'require_linear_history', 'is_protected_weird', 'is_protection_missing']
+    with open(out_file_path, 'w') as csvfile: 
+        writer = csv.DictWriter(csvfile, fieldnames=headers)
+
+        writer.writeheader()
+        for repo in repo_details:
+            writer.writerow({key: repo[key] for key in repo if key in headers})
+
+    print(f'I\'ve written {len(repo_details)} to {out_file_path}')
+
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
@@ -172,8 +204,14 @@ def unprotected_repos(github_user, github_token, github_org, out_file_path, igno
     repos = get_all_repos(github_org, github_user, github_token, ignore_repo)
     print(f'Found {len(repos)} repositories')
     print(f'Checking whether the main branch is protected')
-    # commits = [c for c in map(lambda x: get_commits_with_tag(x, github_user, github_token, TAG_RELEASE), tqdm(repos))]
-    # write_commits_on_file([c for commits_per_repo in commits for c in commits_per_repo], out_file_path)
+    repo_protections = [r for r in map(lambda x: get_repo_protections(x, github_user, github_token), tqdm(repos))]
+    # repos_with_weird_protection = [r for r in repo_protections if not r['is_protected_weird']]
+    unprotected_repos = [repo for repo in repo_protections if repo['is_protection_missing']]
+    print(f'Adding protection to {len(unprotected_repos)}')
+    for i, repo in enumerate(unprotected_repos):
+        print(f'{i+1}/{len(unprotected_repos)} {repo["name"]}')
+        add_branch_protection('credimi', repo['name'], github_user, github_token, repo['default_branch'])
+    write_repos_on_file([repo for repo in unprotected_repos], out_file_path)
 
 
 #TODO: parametrizzare progetto e created date

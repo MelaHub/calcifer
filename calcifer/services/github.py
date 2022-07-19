@@ -59,4 +59,32 @@ def get_all_repos(github_org, github_user, github_token, ignore_repos=None):
         token=github_token, 
         url='https://api.github.com')
     repos = github_pager.get_all_pages(f'/orgs/{github_org}/repos', {}, None)
-    return [r for r in repos if r['name'] not in ignore_repos]
+    return [r for r in repos if r['name'] not in ignore_repos and r['archived'] == False]
+
+def get_branch_protection(github_org, github_repo_name, github_user, github_token, main_branch):
+    response = requests.get(f'https://api.github.com/repos/{github_org}/{github_repo_name}/branches/{main_branch}/protection', auth = HTTPBasicAuth(github_user, github_token))
+    if response.status_code == 404:
+        return {}
+    return json.loads(response.content)
+
+DEFAULT_PROTECTION = {
+	"required_pull_request_reviews": {
+		"dismiss_stale_reviews": True,
+		"required_approving_review_count": 1
+	},
+	"required_linear_history": True,
+	"allow_force_pushes": False,
+	"required_status_checks": {
+		"strict": True,
+		"contexts": []
+	},
+	"enforce_admins": False,
+	"restrictions": None
+}
+
+def add_branch_protection(github_org, github_repo_name, github_user, github_token, main_branch):
+    response = requests.put(f'https://api.github.com/repos/{github_org}/{github_repo_name}/branches/{main_branch}/protection', json=DEFAULT_PROTECTION, auth = HTTPBasicAuth(github_user, github_token))
+    if response.status_code != 200:
+        import curlify
+        print(curlify.to_curl(response.request))
+        raise Exception(f"Something went wrong while adding branch protection to {github_repo_name}")
