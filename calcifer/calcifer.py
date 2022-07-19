@@ -205,13 +205,13 @@ def unprotected_repos(github_user, github_token, github_org, out_file_path, igno
     print(f'Found {len(repos)} repositories')
     print(f'Checking whether the main branch is protected')
     repo_protections = [r for r in map(lambda x: get_repo_protections(x, github_user, github_token), tqdm(repos))]
-    # repos_with_weird_protection = [r for r in repo_protections if not r['is_protected_weird']]
-    unprotected_repos = [repo for repo in repo_protections if repo['is_protection_missing']]
-    print(f'Adding protection to {len(unprotected_repos)}')
-    for i, repo in enumerate(unprotected_repos):
-        print(f'{i+1}/{len(unprotected_repos)} {repo["name"]}')
-        add_branch_protection('credimi', repo['name'], github_user, github_token, repo['default_branch'])
-    write_repos_on_file([repo for repo in unprotected_repos], out_file_path)
+    repos_with_weird_protection = [r for r in repo_protections if not r['is_protected_weird']]
+    # unprotected_repos = [repo for repo in repo_protections if repo['is_protection_missing']]
+    # print(f'Adding protection to {len(unprotected_repos)}')
+    # for i, repo in enumerate(unprotected_repos):
+    #     print(f'{i+1}/{len(unprotected_repos)} {repo["name"]}')
+    #     add_branch_protection('credimi', repo['name'], github_user, github_token, repo['default_branch'])
+    write_repos_on_file([repo for repo in repos_with_weird_protection], out_file_path)
 
 
 #TODO: parametrizzare progetto e created date
