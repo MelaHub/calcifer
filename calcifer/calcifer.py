@@ -257,7 +257,9 @@ def get_comments_by_issue(issue, jira_url, jira_user, jira_api_token, search_for
 @click.option("--jira-user", envvar="JIRA_USER", type=str, required=True)
 @click.option("--jira-api-token", envvar="JIRA_API_TOKEN", type=str, required=True)
 @click.option("--jira-url", envvar="JIRA_URL", type=str, required=True, default='https://instapartners.atlassian.net')
-def issues_change_status_log(jira_user, jira_api_token, jira_url):
+@click.option("--jira-project", envvar="JIRA_PROJECT", type=str, required=True)
+@click.option("--since", envvar="SINCE", type=str, required=True, default="startOfYear()")
+def issues_change_status_log(jira_user, jira_api_token, jira_url, jira_project, since):
     jira_pager = JiraPager(
         user=jira_user, 
         token=jira_api_token, 
@@ -269,7 +271,7 @@ def issues_change_status_log(jira_user, jira_api_token, jira_url):
     else:
         issues = jira_pager.get_all_pages(
             f'/rest/api/3/search', 
-            {'jql': 'project="Platform" AND createdDate > startOfYear()'}, 
+            {'jql': f'project="{jira_project}" AND createdDate > {since}'}, 
             'issues')
         with open(issues_cache, 'w') as f:
             json.dump(issues, f)
