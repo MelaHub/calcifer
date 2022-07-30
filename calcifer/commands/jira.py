@@ -1,24 +1,20 @@
+from functools import cache
+from calcifer.services.jira import JiraPager
 from calcifer.utils.json_logger import logger
 import json
 from os.path import exists
+from calcifer.utils.cache import cache_to_file
 
 from tqdm import tqdm
 
-def get_issues_for_project(jira_pager, jira_project, since):
-    issues_cache = './issues_pfm_cache.json'
+@cache_to_file(file_prefix='issues_for_project')
+def get_issues_for_project(jira_pager: JiraPager, jira_project: str, since: str):
     jql_query = f'project="{jira_project}" AND createdDate > {since}'
     logger.info(f"Retrieving issues status log with jql {jql_query}")
-    if exists(issues_cache):
-        with open(issues_cache, 'r') as f:
-            issues = json.load(f)  
-    else:
-        issues = jira_pager.get_all_pages(
+    issues = jira_pager.get_all_pages(
             f'/rest/api/3/search', 
             {'jql': jql_query}, 
             'issues')
-        with open(issues_cache, 'w') as f:
-            json.dump(issues, f)
-
     return issues
 
 def get_issues_change_logs(jira_pager, issues):
