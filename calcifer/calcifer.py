@@ -9,8 +9,10 @@ import itertools
 from tqdm import tqdm
 from os.path import exists
 from calcifer.services.jira import JiraPager
+from calcifer.utils.json_logger import logger
 
 from calcifer.services.github import add_branch_protection, get_branch_protection, get_all_repos, get_contributors_for_repo, get_commits_for_repo, get_commits_for_repo_with_tag, get_commit_with_sha
+
 
 TAG_RELEASE = 'release-2021'
 
@@ -265,13 +267,15 @@ def issues_change_status_log(jira_user, jira_api_token, jira_url, jira_project, 
         token=jira_api_token, 
         url=jira_url)
     issues_cache = './issues_pfm_cache.json'
+    jql_query = f'project="{jira_project}" AND createdDate > {since}'
+    logger.info(f"Retrieving issues status log with jql {jql_query}")
     if exists(issues_cache):
         with open(issues_cache, 'r') as f:
             issues = json.load(f)  
     else:
         issues = jira_pager.get_all_pages(
             f'/rest/api/3/search', 
-            {'jql': f'project="{jira_project}" AND createdDate > {since}'}, 
+            {'jql': jql_query}, 
             'issues')
         with open(issues_cache, 'w') as f:
             json.dump(issues, f)
