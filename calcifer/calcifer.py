@@ -10,6 +10,7 @@ from tqdm import tqdm
 from os.path import exists
 from calcifer.services.jira import JiraPager
 from calcifer.utils.json_logger import logger
+from calcifer.commands.jira import get_issues_for_project, get_issues_change_logs
 
 from calcifer.services.github import add_branch_protection, get_branch_protection, get_all_repos, get_contributors_for_repo, get_commits_for_repo, get_commits_for_repo_with_tag, get_commit_with_sha
 
@@ -266,41 +267,8 @@ def issues_change_status_log(jira_user, jira_api_token, jira_url, jira_project, 
         user=jira_user, 
         token=jira_api_token, 
         url=jira_url)
-    issues_cache = './issues_pfm_cache.json'
-    jql_query = f'project="{jira_project}" AND createdDate > {since}'
-    logger.info(f"Retrieving issues status log with jql {jql_query}")
-    if exists(issues_cache):
-        with open(issues_cache, 'r') as f:
-            issues = json.load(f)  
-    else:
-        issues = jira_pager.get_all_pages(
-            f'/rest/api/3/search', 
-            {'jql': jql_query}, 
-            'issues')
-        with open(issues_cache, 'w') as f:
-            json.dump(issues, f)
-
-    change_log_cache = './change_status_log'
-    if exists(change_log_cache):
-        with open(change_log_cache, 'r') as f:
-            issues = json.load(f)  
-    else:
-        change_logs = []
-
-        for i in tqdm(issues):
-            change_log = jira_pager.get_all_pages(
-                f'/rest/api/3/issue/{i["key"]}/changelog',
-                {}, 
-                'values',
-                show_progress=False)
-            for log in change_log:
-                for field in log['items']:
-                    if field['field'] == 'status':
-                        assignee = i['fields']['assignee']['displayName'] if i['fields']['assignee'] else None
-                        change_logs.append([i['key'], assignee, log['created'], field['fromString'], field['toString']])
-
-        with open(change_log_cache, 'w') as f:
-            json.dump(change_logs, f)
+    issues = get_issues_for_project(jira_pager, jira_project, since)
+    get_issues_change_logs(jira_pager, issues)
     
 
 @click.group()
