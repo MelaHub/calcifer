@@ -15,11 +15,6 @@ from calcifer.services.github import add_branch_protection, get_branch_protectio
 TAG_RELEASE = 'release-2021'
 
 
-def print_iterator(it):
-    for x in it:
-        print(x, end=' ')
-    print('') 
-
 def get_top_contributors_for_repo(repo, github_user, github_token, n_contrib):
     content = get_contributors_for_repo(repo, github_user, github_token)
     return {
