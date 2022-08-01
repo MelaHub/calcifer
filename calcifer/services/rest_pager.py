@@ -48,7 +48,7 @@ class RestPager(BaseModel):
                     self.update_params(query_params)
                     if type(curr_res) is dict:
                         curr_res = curr_res[collection_name]
-                    valid_results = [map_item(res) for res in curr_res.get(collection_name, curr_res)]
+                    valid_results = [map_item(res) for res in curr_res]
                     issues += valid_results
             return issues
         else:
