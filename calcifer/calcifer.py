@@ -12,7 +12,7 @@ from calcifer.services.jira_pager import JiraPager
 from calcifer.utils.json_logger import logger
 from calcifer.commands.jira import get_issues_for_project, get_issues_change_logs
 
-from calcifer.services.github import add_branch_protection, get_branch_protection, get_all_repos, get_contributors_for_repo, get_commits_for_repo, get_commits_for_repo_with_tag, get_commit_with_sha
+from calcifer.services.github_pager import add_branch_protection, get_branch_protection, get_all_repos, get_contributors_for_repo, get_commits_for_repo, get_commits_for_repo_with_tag, get_commit_with_sha
 
 
 TAG_RELEASE = 'release-2021'
