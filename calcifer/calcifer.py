@@ -8,7 +8,7 @@ from datetime import datetime
 import itertools
 from tqdm import tqdm
 from os.path import exists
-from calcifer.services.jira import JiraPager
+from calcifer.services.jira_pager import JiraPager
 from calcifer.utils.json_logger import logger
 from calcifer.commands.jira import get_issues_for_project, get_issues_change_logs
 

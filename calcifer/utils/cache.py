@@ -6,6 +6,7 @@ import os
 import json
 
 
+# TODO: Replace with sqlite
 def cache_to_file(file_prefix: str):
 
     def inner(func):
@@ -29,6 +30,7 @@ def cache_to_file(file_prefix: str):
                 with tempfile.NamedTemporaryFile(mode='w', prefix=file_prefix, delete=False) as f:
                     logger.info(f"Saving cache to {f.name}")
                     json.dump(data, f)
+            return data
         
         return wrapper
 

@@ -34,7 +34,6 @@ class RestPager(BaseModel):
             return response
 
         issues = []
-        query_params = {}
         self.update_params(query_params)
 
         # TODO: refactor the two branches
