@@ -52,7 +52,7 @@ class RestPager(BaseModel):
                     issues += valid_results
             return issues
         else:
-            while True:
+            while True: # TODO: this is for github that doesn't give the total number of repos; only way to do it is to use graphql https://docs.github.com/en/graphql
                 response = make_request(query_params)
                 curr_res = json.loads(response.content)
                 if len(curr_res):

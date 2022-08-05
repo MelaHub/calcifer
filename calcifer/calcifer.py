@@ -262,7 +262,7 @@ def get_comments_by_issue(issue, jira_url, jira_user, jira_api_token, search_for
 @click.option("--jira-url", envvar="JIRA_URL", type=str, required=True, default='https://instapartners.atlassian.net')
 @click.option("--jira-project", envvar="JIRA_PROJECT", type=str, required=True)
 @click.option("--since", envvar="SINCE", type=str, required=True, default="startOfYear()")
-def issues_change_status_log(jira_user, jira_api_token, jira_url, jira_project, since):
+def issues_change_status_log(jira_user: str, jira_api_token: str, jira_url: str, jira_project: str, since: str):
     jira_pager = JiraPager(
         user=jira_user, 
         token=jira_api_token, 
