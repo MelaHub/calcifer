@@ -37,7 +37,7 @@ class RestPager(BaseModel):
         query_params = {}
         self.update_params(query_params)
 
-        # To refactor
+        # TODO: refactor the two branches
         if self.total_param:
             response = make_request(query_params)
             curr_res = json.loads(response.content) # TODO: I'm actually making an extra call here
