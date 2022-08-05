@@ -263,6 +263,7 @@ def get_comments_by_issue(issue, jira_url, jira_user, jira_api_token, search_for
 @click.option("--jira-project", envvar="JIRA_PROJECT", type=str, required=True)
 @click.option("--since", envvar="SINCE", type=str, required=True, default="startOfYear()")
 def issues_change_status_log(jira_user: str, jira_api_token: str, jira_url: str, jira_project: str, since: str):
+    """This command retrieves the list of all status changes for all issues created from `since` of project `jira_project`."""
     jira_pager = JiraPager(
         user=jira_user, 
         token=jira_api_token, 
