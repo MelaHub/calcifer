@@ -3,10 +3,15 @@ from requests.auth import HTTPBasicAuth
 from datetime import datetime
 import json
 from calcifer.services.rest_pager import RestPager
+from pydantic import HttpUrl
+
 
 class GithubPager(RestPager):
+    github_org: str
+    ignore_repos: list
     page_param: str = 'page'
     max_results_param: str = 'per_page'
+    url: HttpUrl = f'https://api.github.com/orgs/{github_org}'
 
     def update_params(self, query_params: dict):
         curr_page_params = query_params.get(self.page_param, -1)
@@ -49,17 +54,6 @@ def get_commits_for_repo(repo, github_user, github_token):
 #     main_response = _get_all_pages(repo['commits_url'].replace('{/sha}', ''), {'sha': 'main'}, github_user, github_token, stop_if=stop_if)
 #     master_response = _get_all_pages(repo['commits_url'].replace('{/sha}', ''), {'sha': 'master'}, github_user, github_token, stop_if = stop_if)
 #     return main_response + master_response
-
-def get_all_repos(github_org, github_user, github_token, ignore_repos=None):
-    print(f'Retrieving all {github_org} repos - hold on...')
-    if not ignore_repos:
-        ignore_repos = []
-    github_pager = GithubPager(
-        user=github_user, 
-        token=github_token, 
-        url='https://api.github.com')
-    repos = github_pager.get_all_pages(f'/orgs/{github_org}/repos', {}, None)
-    return [r for r in repos if r['name'] not in ignore_repos and r['archived'] == False]
 
 def get_branch_protection(github_org, github_repo_name, github_user, github_token, main_branch):
     response = requests.get(f'https://api.github.com/repos/{github_org}/{github_repo_name}/branches/{main_branch}/protection', auth = HTTPBasicAuth(github_user, github_token))

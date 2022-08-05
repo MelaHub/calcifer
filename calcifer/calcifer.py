@@ -11,11 +11,9 @@ from os.path import exists
 from calcifer.services.jira_pager import JiraPager
 from calcifer.utils.json_logger import logger
 from calcifer.commands.jira import get_issues_for_project, get_issues_change_logs
+from pydantic import SecretStr
 
-from calcifer.services.github_pager import add_branch_protection, get_branch_protection, get_all_repos, get_contributors_for_repo, get_commits_for_repo, get_commits_for_repo_with_tag, get_commit_with_sha
-
-
-TAG_RELEASE = 'release-2021'
+from calcifer.services.github_pager import GithubPager, add_branch_protection, get_branch_protection, get_all_repos, get_contributors_for_repo, get_commits_for_repo, get_commits_for_repo_with_tag, get_commit_with_sha
 
 
 def get_top_contributors_for_repo(repo, github_user, github_token, n_contrib):
@@ -150,13 +148,17 @@ def first_contribution(github_user, github_token, github_org, out_file_path, ign
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
 @click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
 @click.option("--github-org", type=str, required=True)
-@click.option("--out-file-path", type=str, required=True)
-@click.option("--ignore-repo", "-i", type=str, multiple=True)
-def audit_releases(github_user, github_token, github_org, out_file_path, ignore_repo):
+@click.option("--ignore-repos", "-i", type=str, multiple=True)
+@click.option("--release-rag", type=str, required=True)
+def audit_releases(github_user: str, github_token: SecretStr, github_org: str, ignore_repos: list, release_tag: str):
+    """Retrieves all releases for all unarchived repositories in an organization and writes them to a csv file.
+    
+    A release is a commit with a tag matrching a specific pattern."""
+    github_pager = GithubPager(user=github_user, token=github_token, org=github_org, ignore_repos=ignore_repos)
     repos = get_all_repos(github_org, github_user, github_token, ignore_repo)
     print(f'Found {len(repos)} repositories')
     print(f'Retrieving now all releases of this year...')
-    commits = [c for c in map(lambda x: get_commits_with_tag(x, github_user, github_token, TAG_RELEASE), tqdm(repos))]
+    commits = [c for c in map(lambda x: get_commits_with_tag(x, github_user, github_token, release_tag), tqdm(repos))]
     write_commits_on_file([c for commits_per_repo in commits for c in commits_per_repo], out_file_path)
 
 def get_repo_protections(repo, github_user, github_token):
@@ -262,7 +264,7 @@ def get_comments_by_issue(issue, jira_url, jira_user, jira_api_token, search_for
 @click.option("--jira-url", envvar="JIRA_URL", type=str, required=True, default='https://instapartners.atlassian.net')
 @click.option("--jira-project", envvar="JIRA_PROJECT", type=str, required=True)
 @click.option("--since", envvar="SINCE", type=str, required=True, default="startOfYear()")
-def issues_change_status_log(jira_user: str, jira_api_token: str, jira_url: str, jira_project: str, since: str):
+def issues_change_status_log(jira_user: str, jira_api_token: SecretStr, jira_url: str, jira_project: str, since: str):
     """This command retrieves the list of all status changes for all issues created from `since` of project `jira_project`."""
     jira_pager = JiraPager(
         user=jira_user, 
@@ -300,10 +302,12 @@ def cli():
     """
     pass
 
+# Github commands
+cli.add_command(audit_releases)
 cli.add_command(main_contributors)
 cli.add_command(first_contribution)
-cli.add_command(audit_releases)
 cli.add_command(unprotected_repos)
 
+# Jira commands
 cli.add_command(issues_with_comments_by)
 cli.add_command(issues_change_status_log)
