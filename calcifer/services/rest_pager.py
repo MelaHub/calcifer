@@ -36,7 +36,7 @@ class RestPager(BaseModel):
                 raise Exception("Something went wrong while calling the github api")
             return response
 
-        issues = []
+        data = []
         self.update_params(query_params)
 
         # TODO: refactor the two branches
@@ -51,8 +51,8 @@ class RestPager(BaseModel):
                     if type(curr_res) is dict:
                         curr_res = curr_res[collection_name]
                     valid_results = [map_item(res) for res in curr_res]
-                    issues += valid_results
-            return issues
+                    data += valid_results
+            return data
         else:
             while True: # TODO: this is for github that doesn't give the total number of repos; only way to do it is to use graphql https://docs.github.com/en/graphql
                 response = make_request(query_params)
@@ -61,12 +61,12 @@ class RestPager(BaseModel):
                     if collection_name:
                         curr_res = curr_res.get(collection_name, [])
                     else:
-                        issues += [map_item(res) for res in [curr_res]] # This is a response with a single result
+                        data += [map_item(res) for res in [curr_res]] # This is a response with a single result
                         break
                 if len(curr_res):
                     self.update_params(query_params)
                     valid_results = [map_item(res) for res in curr_res]
-                    issues += valid_results
+                    data += valid_results
                 else:
                     break
-            return issues
+            return data

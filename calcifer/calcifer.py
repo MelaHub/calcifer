@@ -13,6 +13,7 @@ from calcifer.utils.json_logger import logger
 from calcifer.commands.jira import get_issues_for_project, get_issues_change_logs
 from pydantic import SecretStr
 from pathlib import Path
+from calcifer.utils.file_writer import write_to_file
 
 from calcifer.services.github_pager import GithubPager, get_branch_protection, get_contributors_for_repo, get_commits_for_repo
 from calcifer.commands.github import get_all_repos, get_commits_with_tag, get_first_contributions
@@ -68,17 +69,6 @@ def main_contributors(github_user, github_token, github_org, out_file_path, n_co
     contributors_repo = map(lambda x: get_top_contributors_for_repo(x, github_user, github_token, n_contrib), tqdm(repos))
     write_main_contributors_to_file(contributors_repo, out_file_path)
 
-def write_commits_on_file(commit_details, out_file_path):
-    with open(out_file_path, 'w') as csvfile: 
-        import pdb; pdb.set_trace()
-        writer = csv.DictWriter(csvfile, fieldnames=commit_details[0].keys())
-
-        writer.writeheader()
-        for commit in commit_details:
-            writer.writerow(commit)
-
-    print(f'I\'ve written {len(commit_details)} to {out_file_path}')
-
 def write_first_contribution_to_file(first_contributions, out_file_path):
     def get_key_by_index_or_empty(contributors, index, key):
         return contributors['contributors'][index][key] if len(contributors['contributors']) >= (index + 1) else ''
@@ -126,7 +116,7 @@ def commits_with_tag(github_user: str, github_token: SecretStr, github_org: str,
     github_pager = GithubPager(user=github_user, token=github_token, url=f'https://api.github.com/')
     repos = get_all_repos(github_pager, ignore_repos, github_org)
     commits = get_commits_with_tag(github_pager, repos, tag)
-    write_commits_on_file([c for commits_per_repo in commits for c in commits_per_repo], out_file_path)
+    write_to_file(out_file_path, commits, ["repo", "tag", "author", "message", "date"])
 
 def get_repo_protections(repo, github_user, github_token):
     default_branch = repo['default_branch']
