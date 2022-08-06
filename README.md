@@ -30,7 +30,7 @@ By running `poetry run calcifer` you'll get all the commands you can use. By run
 
 Availabel commands are
 * github: all commands here use unarchived repos
-** audit-releases
+** commits-with-tag: retrieve the list of commits across al repos with a specific tag; if you use a release tag this can be used to extract all releases
 ** first-contribution
 ** main-contributors
 ** unprotected-repos

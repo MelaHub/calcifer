@@ -136,10 +136,8 @@ def first_contribution(github_user, github_token, github_org, out_file_path, ign
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
 @click.option("--release-tag", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
-def audit_releases(github_user: str, github_token: SecretStr, github_org: str, ignore_repos: list, release_tag: str, out_file_path: Path):
-    """Retrieves all releases for all unarchived repositories in an organization and writes them to a csv file.
-    
-    A release is a commit with a tag matrching a specific pattern."""
+def commits_with_tag(github_user: str, github_token: SecretStr, github_org: str, ignore_repos: list, release_tag: str, out_file_path: Path):
+    """Retrieves all commits that matches a specific tag actoss al repositories in an organization and writes them to a csv file."""
     github_pager = GithubPager(user=github_user, token=github_token, url=f'https://api.github.com/')
     repos = get_all_repos(github_pager, ignore_repos, github_org)
     commits = get_commits_with_tag(github_pager, repos, release_tag)
@@ -288,7 +286,7 @@ def cli():
     pass
 
 # Github commands
-cli.add_command(audit_releases)
+cli.add_command(commits_with_tag)
 cli.add_command(main_contributors)
 cli.add_command(first_contribution)
 cli.add_command(unprotected_repos)
