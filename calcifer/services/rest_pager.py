@@ -18,10 +18,10 @@ class RestPager(BaseModel):
     page_size: int = REPO_PAGE_SIZE
     total_param: int = None
 
-    def update_params(self, query_params: dict):
+    def update_params(self, query_params: dict) -> None:
         raise NotImplementedError
 
-    def get_all_pages(self, path: str, query_params: dict, collection_name: str, map_item: Callable[dict, dict]=lambda item: item, show_progress: bool=True):
+    def get_all_pages(self, path: str, query_params: dict, collection_name: str, map_item: Callable[dict, dict]=lambda item: item, show_progress: bool=True) -> list:
         
         if self.url in path:
             path = path.replace(self.url, '')

@@ -8,7 +8,7 @@ class JiraPager(RestPager):
     max_results_param: str = 'maxResults'
     total_param: str = 'total'
 
-    def update_params(self, query_params: dict):
+    def update_params(self, query_params: dict) -> None:
         if query_params.get(self.max_results_param) is not None and query_params.get(self.start_at_param) is not None:
             query_params[self.start_at_param] += self.page_size
         else:

@@ -11,7 +11,7 @@ class GithubPager(RestPager):
     page_param: str = 'page'
     max_results_param: str = 'per_page'
 
-    def update_params(self, query_params: dict):
+    def update_params(self, query_params: dict) -> None:
         curr_page_params = query_params.get(self.page_param, -1)
         if curr_page_params > -1:
             query_params[self.page_param] += 1

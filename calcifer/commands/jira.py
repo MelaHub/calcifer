@@ -9,7 +9,7 @@ from calcifer.utils.cache import cache_to_file
 from tqdm import tqdm
 
 @cache_to_file(file_prefix='issues_for_project')
-def get_issues_for_project(jira_pager: JiraPager, jira_project: str, since: str):
+def get_issues_for_project(jira_pager: JiraPager, jira_project: str, since: str) -> list:
     jql_query = f'project={jira_project} AND createdDate > {since}'
     logger.info(f"Retrieving Jira issues with jql {jql_query}")
     issues = jira_pager.get_all_pages(
@@ -19,7 +19,7 @@ def get_issues_for_project(jira_pager: JiraPager, jira_project: str, since: str)
     return issues
 
 @cache_to_file(file_prefix='issues_change_status_log')
-def get_issues_change_logs(jira_pager: JiraPager, issues: json):
+def get_issues_change_logs(jira_pager: JiraPager, issues: json) -> list:
     change_logs = []
 
     for i in tqdm(issues):
