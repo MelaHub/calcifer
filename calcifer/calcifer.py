@@ -215,21 +215,22 @@ def get_comments_by_issue(issue, jira_url, jira_user, jira_api_token, search_for
             return [issue['key'], issue['fields']['created']]
     return None
 
-# TODO: this should save to file too instead of just caching
 @click.command()
 @click.option("--jira-user", envvar="JIRA_USER", type=str, required=True)
 @click.option("--jira-api-token", envvar="JIRA_API_TOKEN", type=str, required=True)
 @click.option("--jira-url", envvar="JIRA_URL", type=str, required=True, default='https://instapartners.atlassian.net')
 @click.option("--jira-project", envvar="JIRA_PROJECT", type=str, required=True)
 @click.option("--since", envvar="SINCE", type=str, required=True, default="startOfYear()")
-def issues_change_status_log(jira_user: str, jira_api_token: SecretStr, jira_url: str, jira_project: str, since: str):
+@click.option("--out-file-path", type=str, required=True)
+def issues_change_status_log(jira_user: str, jira_api_token: SecretStr, jira_url: str, jira_project: str, since: str, out_file_path: Path):
     """This command retrieves the list of all status changes for all issues created from `since` of project `jira_project`."""
     jira_pager = JiraPager(
         user=jira_user, 
         token=jira_api_token, 
         url=jira_url)
     issues = get_issues_for_project(jira_pager, jira_project, since)
-    get_issues_change_logs(jira_pager, issues)
+    change_log = get_issues_change_logs(jira_pager, issues)
+    write_to_file(out_file_path, change_log)
     
 
 @click.group()

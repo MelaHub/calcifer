@@ -32,5 +32,5 @@ def get_issues_change_logs(jira_pager: JiraPager, issues: json) -> list:
             for field in log['items']:
                 if field['field'] == 'status':
                     assignee = i['fields']['assignee']['displayName'] if i['fields']['assignee'] else None
-                    change_logs.append([i['key'], assignee, log['created'], field['fromString'], field['toString']])
+                    change_logs.append({'key': i['key'], 'assignee': assignee, 'created': log['created'], 'from': field['fromString'], 'to': field['toString']})
     return change_logs
