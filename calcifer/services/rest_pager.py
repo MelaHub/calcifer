@@ -19,10 +19,13 @@ class RestPager(BaseModel):
     total_param: int = None
 
     def update_params(self, query_params: dict):
-        pass
+        raise NotImplementedError
 
     def get_all_pages(self, path: str, query_params: dict, collection_name: str, map_item: Callable[dict, dict]=lambda item: item, show_progress: bool=True):
         
+        if self.url in path:
+            path = path.replace(self.url, '')
+
         def make_request(query_params: dict):
             session = requests.Session()
             request = requests.Request('GET', f'{self.url}{path}', params=query_params, auth=HTTPBasicAuth(self.user, self.token.get_secret_value())).prepare()
@@ -56,6 +59,8 @@ class RestPager(BaseModel):
                 curr_res = json.loads(response.content)
                 if len(curr_res):
                     self.update_params(query_params)
+                    print(path)
+                    import pdb; pdb.set_trace()
                     if type(curr_res) is dict:
                         curr_res = curr_res[collection_name]
                     valid_results = [map_item(res) for res in curr_res]

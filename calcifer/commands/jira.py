@@ -5,6 +5,7 @@ import json
 from os.path import exists
 from calcifer.utils.cache import cache_to_file
 
+
 from tqdm import tqdm
 
 @cache_to_file(file_prefix='issues_for_project')

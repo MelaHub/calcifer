@@ -7,11 +7,9 @@ from pydantic import HttpUrl
 
 
 class GithubPager(RestPager):
-    github_org: str
-    ignore_repos: list
+
     page_param: str = 'page'
     max_results_param: str = 'per_page'
-    url: HttpUrl = f'https://api.github.com/orgs/{github_org}'
 
     def update_params(self, query_params: dict):
         curr_page_params = query_params.get(self.page_param, -1)
@@ -31,22 +29,6 @@ def get_contributors_for_repo(repo, github_user, github_token):
     elif response.status_code == 200:
         content = json.loads(response.content)
     return content
-
-def get_commits_for_repo_with_tag(repo, github_user, github_token, tag):
-    github_pager = GithubPager(
-        user=github_user, 
-        token=github_token, 
-        url=repo['git_tags_url'].replace('{/sha}', '').replace('/git/tags', '/tags'))
-    all_commits = github_pager.get_all_pages('', {}, github_user, github_token)
-    release_commits = [commit for commit in all_commits if tag in commit['name']]
-    return release_commits
-
-def get_commit_with_sha(repo, github_user, github_token, sha):
-    commit_url = repo['commits_url'].replace('{/sha}', f"/{sha}")
-    response = requests.get(commit_url, auth = HTTPBasicAuth(github_user, github_token))
-    if response.status_code != 200:
-        raise Exception(f"Something went wrong while fetching {commit_url}")
-    return json.loads(response.content)
 
 def get_commits_for_repo(repo, github_user, github_token):
     pass

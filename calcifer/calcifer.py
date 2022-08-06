@@ -12,9 +12,10 @@ from calcifer.services.jira_pager import JiraPager
 from calcifer.utils.json_logger import logger
 from calcifer.commands.jira import get_issues_for_project, get_issues_change_logs
 from pydantic import SecretStr
+from pathlib import Path
 
-from calcifer.services.github_pager import GithubPager, add_branch_protection, get_branch_protection, get_all_repos, get_contributors_for_repo, get_commits_for_repo, get_commits_for_repo_with_tag, get_commit_with_sha
-
+from calcifer.services.github_pager import GithubPager, get_branch_protection, get_contributors_for_repo, get_commits_for_repo
+from calcifer.commands.github import get_all_repos, get_commits_with_tag
 
 def get_top_contributors_for_repo(repo, github_user, github_token, n_contrib):
     content = get_contributors_for_repo(repo, github_user, github_token)
@@ -77,22 +78,6 @@ def get_first_contribution_by_repo(repo, github_user, github_token):
         }
         for author, commits in itertools.groupby(date_commits, lambda x: x['author'])}
 
-def get_commits_with_tag(repo, github_user, github_token, tag):
-    commits_with_tag = get_commits_for_repo_with_tag(repo, github_user, github_token, tag)
-    commits_with_tag_details = []
-    for commit in commits_with_tag:
-        commit_details = get_commit_with_sha(repo, github_user, github_token, commit['commit']['sha'])
-        commits_with_tag_details.append(
-            {
-                'repo': repo['name'],
-                'tag': commit['name'],
-                'author': commit_details['commit']['author']['name'],
-                'message': commit_details['commit']['message'].replace('\n', '; '),
-                'date': commit_details['commit']['author']['date']
-            }
-        )
-    return commits_with_tag_details
-
 def write_commits_on_file(commit_details, out_file_path):
     with open(out_file_path, 'w') as csvfile: 
         writer = csv.DictWriter(csvfile, fieldnames=commit_details[0].keys())
@@ -149,16 +134,15 @@ def first_contribution(github_user, github_token, github_org, out_file_path, ign
 @click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
-@click.option("--release-rag", type=str, required=True)
-def audit_releases(github_user: str, github_token: SecretStr, github_org: str, ignore_repos: list, release_tag: str):
+@click.option("--release-tag", type=str, required=True)
+@click.option("--out-file-path", type=str, required=True)
+def audit_releases(github_user: str, github_token: SecretStr, github_org: str, ignore_repos: list, release_tag: str, out_file_path: Path):
     """Retrieves all releases for all unarchived repositories in an organization and writes them to a csv file.
     
     A release is a commit with a tag matrching a specific pattern."""
-    github_pager = GithubPager(user=github_user, token=github_token, org=github_org, ignore_repos=ignore_repos)
-    repos = get_all_repos(github_org, github_user, github_token, ignore_repo)
-    print(f'Found {len(repos)} repositories')
-    print(f'Retrieving now all releases of this year...')
-    commits = [c for c in map(lambda x: get_commits_with_tag(x, github_user, github_token, release_tag), tqdm(repos))]
+    github_pager = GithubPager(user=github_user, token=github_token, url=f'https://api.github.com/')
+    repos = get_all_repos(github_pager, ignore_repos, github_org)
+    commits = get_commits_with_tag(github_pager, repos, release_tag)
     write_commits_on_file([c for commits_per_repo in commits for c in commits_per_repo], out_file_path)
 
 def get_repo_protections(repo, github_user, github_token):
@@ -258,6 +242,7 @@ def get_comments_by_issue(issue, jira_url, jira_user, jira_api_token, search_for
             return [issue['key'], issue['fields']['created']]
     return None
 
+# TODO: this should save to file too instead of just caching
 @click.command()
 @click.option("--jira-user", envvar="JIRA_USER", type=str, required=True)
 @click.option("--jira-api-token", envvar="JIRA_API_TOKEN", type=str, required=True)
