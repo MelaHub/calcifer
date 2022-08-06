@@ -57,12 +57,14 @@ class RestPager(BaseModel):
             while True: # TODO: this is for github that doesn't give the total number of repos; only way to do it is to use graphql https://docs.github.com/en/graphql
                 response = make_request(query_params)
                 curr_res = json.loads(response.content)
+                if type(curr_res) is dict:
+                    if collection_name:
+                        curr_res = curr_res.get(collection_name, [])
+                    else:
+                        issues += [map_item(res) for res in [curr_res]] # This is a response with a single result
+                        break
                 if len(curr_res):
                     self.update_params(query_params)
-                    print(path)
-                    import pdb; pdb.set_trace()
-                    if type(curr_res) is dict:
-                        curr_res = curr_res[collection_name]
                     valid_results = [map_item(res) for res in curr_res]
                     issues += valid_results
                 else:
