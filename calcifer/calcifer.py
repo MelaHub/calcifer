@@ -15,8 +15,8 @@ from pydantic import SecretStr
 from pathlib import Path
 from calcifer.utils.file_writer import write_to_file
 
-from calcifer.services.github_pager import GithubPager, get_branch_protection, get_contributors_for_repo, get_commits_for_repo
-from calcifer.commands.github import get_all_repos, get_commits_with_tag, get_first_contributions
+from calcifer.services.github_pager import GithubPager, get_branch_protection, get_contributors_for_repo
+from calcifer.commands.github import get_all_repos, get_commits_with_tag, get_first_contributions, get_first_contributions_by_author
 
 def get_top_contributors_for_repo(repo, github_user, github_token, n_contrib):
     content = get_contributors_for_repo(repo, github_user, github_token)
@@ -69,29 +69,6 @@ def main_contributors(github_user, github_token, github_org, out_file_path, n_co
     contributors_repo = map(lambda x: get_top_contributors_for_repo(x, github_user, github_token, n_contrib), tqdm(repos))
     write_main_contributors_to_file(contributors_repo, out_file_path)
 
-def write_first_contribution_to_file(first_contributions, out_file_path):
-    def get_key_by_index_or_empty(contributors, index, key):
-        return contributors['contributors'][index][key] if len(contributors['contributors']) >= (index + 1) else ''
-
-    first_contributions_flat = [{
-        'author': author,
-        'date': first_contributions[author]['date'],
-        'repo_name': first_contributions[author]['repo']}
-         for author in first_contributions]
-
-    if not len(first_contributions_flat):
-        print("No data found")
-        return
-
-    with open(out_file_path, 'w') as csvfile: 
-        writer = csv.DictWriter(csvfile, fieldnames=first_contributions_flat[0].keys())
-
-        writer.writeheader()
-        for contrib in first_contributions_flat:
-            writer.writerow(contrib)
-
-    print(f'I\'ve written {len(first_contributions_flat)} to {out_file_path}')
-
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
 @click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
@@ -99,10 +76,12 @@ def write_first_contribution_to_file(first_contributions, out_file_path):
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
 def first_contribution(github_user: str, github_token: str, github_org: str, out_file_path: Path, ignore_repos: list):
+    """Retrieves the very first contribution for all repos in an org."""
     github_pager = GithubPager(user=github_user, token=github_token, url=f'https://api.github.com/')
     repos = get_all_repos(github_pager, ignore_repos, github_org)
     first_contributions = get_first_contributions(github_pager, repos)
-    write_first_contribution_to_file(first_contributions, out_file_path)
+    first_contributions_by_author = get_first_contributions_by_author(first_contributions)
+    write_to_file(out_file_path, first_contributions_by_author)
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)

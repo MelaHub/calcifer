@@ -30,13 +30,6 @@ def get_contributors_for_repo(repo, github_user, github_token):
         content = json.loads(response.content)
     return content
 
-def get_commits_for_repo(repo, github_user, github_token):
-    pass
-#     stop_if = lambda x: datetime.strptime(x['commit']['author']['date'], '%Y-%m-%dT%H:%M:%SZ') < datetime(2021, 1, 1)
-#     main_response = _get_all_pages(repo['commits_url'].replace('{/sha}', ''), {'sha': 'main'}, github_user, github_token, stop_if=stop_if)
-#     master_response = _get_all_pages(repo['commits_url'].replace('{/sha}', ''), {'sha': 'master'}, github_user, github_token, stop_if = stop_if)
-#     return main_response + master_response
-
 def get_branch_protection(github_org, github_repo_name, github_user, github_token, main_branch):
     response = requests.get(f'https://api.github.com/repos/{github_org}/{github_repo_name}/branches/{main_branch}/protection', auth = HTTPBasicAuth(github_user, github_token))
     if response.status_code == 404:

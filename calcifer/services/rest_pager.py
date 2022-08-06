@@ -10,6 +10,9 @@ from typing import Callable
 
 REPO_PAGE_SIZE = 100
 
+class NoResponse(Exception):
+    pass
+
 class RestPager(BaseModel):
 
     user: str
@@ -21,7 +24,7 @@ class RestPager(BaseModel):
     def update_params(self, query_params: dict) -> None:
         raise NotImplementedError
 
-    def get_all_pages(self, path: str, query_params: dict, collection_name: str, map_item: Callable[dict, dict]=lambda item: item, show_progress: bool=True) -> list:
+    def get_all_pages(self, path: str, query_params: dict, collection_name: str, map_item: Callable[dict, dict]=lambda item: item, show_progress: bool=True, stop_if: Callable[dict, bool]=lambda x: False) -> list:
         
         if self.url in path:
             path = path.replace(self.url, '')
@@ -30,8 +33,10 @@ class RestPager(BaseModel):
             session = requests.Session()
             request = requests.Request('GET', f'{self.url}{path}', params=query_params, auth=HTTPBasicAuth(self.user, self.token.get_secret_value())).prepare()
             response = session.send(request)
+            # import curlify
+            # print(curlify.to_curl(response.request))
             if response.status_code in (404, 409):
-                return []
+                raise NoResponse 
             elif response.status_code != 200:
                 raise Exception("Something went wrong while calling the github api")
             return response
@@ -50,13 +55,18 @@ class RestPager(BaseModel):
                     self.update_params(query_params)
                     if type(curr_res) is dict:
                         curr_res = curr_res[collection_name]
+                    if stop_if(curr_res[0]):
+                        break
                     valid_results = [map_item(res) for res in curr_res]
                     data += valid_results
             return data
         else:
             while True: # TODO: this is for github that doesn't give the total number of repos; only way to do it is to use graphql https://docs.github.com/en/graphql
-                response = make_request(query_params)
-                curr_res = json.loads(response.content)
+                try:
+                    response = make_request(query_params)
+                    curr_res = json.loads(response.content)
+                except NoResponse:
+                    curr_res = []
                 if type(curr_res) is dict:
                     if collection_name:
                         curr_res = curr_res.get(collection_name, [])
@@ -64,6 +74,8 @@ class RestPager(BaseModel):
                         data += [map_item(res) for res in [curr_res]] # This is a response with a single result
                         break
                 if len(curr_res):
+                    if stop_if(curr_res[0]):
+                        break
                     self.update_params(query_params)
                     valid_results = [map_item(res) for res in curr_res]
                     data += valid_results
