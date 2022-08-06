@@ -70,6 +70,7 @@ def main_contributors(github_user, github_token, github_org, out_file_path, n_co
 
 def write_commits_on_file(commit_details, out_file_path):
     with open(out_file_path, 'w') as csvfile: 
+        import pdb; pdb.set_trace()
         writer = csv.DictWriter(csvfile, fieldnames=commit_details[0].keys())
 
         writer.writeheader()
