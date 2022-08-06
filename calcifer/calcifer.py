@@ -15,7 +15,7 @@ from pydantic import SecretStr
 from pathlib import Path
 
 from calcifer.services.github_pager import GithubPager, get_branch_protection, get_contributors_for_repo, get_commits_for_repo
-from calcifer.commands.github import get_all_repos, get_commits_with_tag
+from calcifer.commands.github import get_all_repos, get_commits_with_tag, get_first_contributions
 
 def get_top_contributors_for_repo(repo, github_user, github_token, n_contrib):
     content = get_contributors_for_repo(repo, github_user, github_token)
@@ -68,16 +68,6 @@ def main_contributors(github_user, github_token, github_org, out_file_path, n_co
     contributors_repo = map(lambda x: get_top_contributors_for_repo(x, github_user, github_token, n_contrib), tqdm(repos))
     write_main_contributors_to_file(contributors_repo, out_file_path)
 
-def get_first_contribution_by_repo(repo, github_user, github_token):
-    commits = get_commits_for_repo(repo, github_user, github_token)
-    date_commits = [{'author': c['commit']['author']['name'], 'date': datetime.strptime(c['commit']['author']['date'], '%Y-%m-%dT%H:%M:%SZ')} for c in commits]        
-    return {
-        author: {
-            'date': min(commit['date'] for commit in commits),
-            'repo': repo['name']
-        }
-        for author, commits in itertools.groupby(date_commits, lambda x: x['author'])}
-
 def write_commits_on_file(commit_details, out_file_path):
     with open(out_file_path, 'w') as csvfile: 
         writer = csv.DictWriter(csvfile, fieldnames=commit_details[0].keys())
@@ -116,17 +106,11 @@ def write_first_contribution_to_file(first_contributions, out_file_path):
 @click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
-@click.option("--ignore-repo", "-i", type=str, multiple=True)
-def first_contribution(github_user, github_token, github_org, out_file_path, ignore_repo):
-    repos = get_all_repos(github_org, github_user, github_token, ignore_repo)
-    print(f'Found {len(repos)} repositories')
-    print(f'Retrieving now all contributors...')
-    first_contributions = {}
-    contributions_in_repo = map(lambda x: get_first_contribution_by_repo(x, github_user, github_token), tqdm(repos))
-    for contribution in contributions_in_repo:
-        for author in contribution:
-            if first_contributions.setdefault(author, {'date': datetime.now(), 'repo': contribution[author]['repo']})['date'] > contribution[author]['date']:
-                first_contributions[author] = contribution[author]
+@click.option("--ignore-repos", "-i", type=str, multiple=True)
+def first_contribution(github_user: str, github_token: str, github_org: str, out_file_path: Path, ignore_repos: list):
+    github_pager = GithubPager(user=github_user, token=github_token, url=f'https://api.github.com/')
+    repos = get_all_repos(github_pager, ignore_repos, github_org)
+    first_contributions = get_first_contributions(github_pager, repos)
     write_first_contribution_to_file(first_contributions, out_file_path)
 
 @click.command()
@@ -134,13 +118,13 @@ def first_contribution(github_user, github_token, github_org, out_file_path, ign
 @click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
-@click.option("--release-tag", type=str, required=True)
+@click.option("--tag", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
-def commits_with_tag(github_user: str, github_token: SecretStr, github_org: str, ignore_repos: list, release_tag: str, out_file_path: Path):
+def commits_with_tag(github_user: str, github_token: SecretStr, github_org: str, ignore_repos: list, tag: str, out_file_path: Path):
     """Retrieves all commits that matches a specific tag actoss al repositories in an organization and writes them to a csv file."""
     github_pager = GithubPager(user=github_user, token=github_token, url=f'https://api.github.com/')
     repos = get_all_repos(github_pager, ignore_repos, github_org)
-    commits = get_commits_with_tag(github_pager, repos, release_tag)
+    commits = get_commits_with_tag(github_pager, repos, tag)
     write_commits_on_file([c for commits_per_repo in commits for c in commits_per_repo], out_file_path)
 
 def get_repo_protections(repo, github_user, github_token):
