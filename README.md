@@ -31,7 +31,7 @@ By running `poetry run calcifer` you'll get all the commands you can use. By run
 Availabel commands are
 * github: all commands here use unarchived repos
 ** commits-with-tag: retrieve the list of commits across al repos with a specific tag; if you use a release tag this can be used to extract all releases
-** first-contribution
+** first-contribution: retrieve for all the people contributing to a org the very first contribution
 ** main-contributors
 ** unprotected-repos
 * jira
