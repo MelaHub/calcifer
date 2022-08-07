@@ -15,16 +15,9 @@ from pydantic import SecretStr
 from pathlib import Path
 from calcifer.utils.file_writer import write_to_file
 
-from calcifer.services.github_pager import GithubPager, get_branch_protection, get_contributors_for_repo
-from calcifer.commands.github import get_all_repos, get_commits_with_tag, get_first_contributions, get_first_contributions_by_author
+from calcifer.services.github_pager import GithubPager, get_branch_protection
+from calcifer.commands.github import get_contributors, get_top_contributors, get_all_repos, get_commits_with_tag, get_first_contributions, get_first_contributions_by_author
 
-def get_top_contributors_for_repo(repo, github_user, github_token, n_contrib):
-    content = get_contributors_for_repo(repo, github_user, github_token)
-    return {
-        'full_name': repo['full_name'],
-        'total_commits': sum([x['contributions'] for x in content]),
-        'contributors': [{'login': c['login'], 'contributions': c['contributions']} for c in content[0:n_contrib]]
-    }
 
 def write_main_contributors_to_file(contributors_repo, out_file_path):
     def get_key_by_index_or_empty(contributors, index, key):
@@ -61,13 +54,14 @@ def write_main_contributors_to_file(contributors_repo, out_file_path):
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--n-contrib", type=int, default=3)
-@click.option("--ignore-repo", "-i", type=str, multiple=True)
-def main_contributors(github_user, github_token, github_org, out_file_path, n_contrib, ignore_repo):
-    repos = get_all_repos(github_org, github_user, github_token, ignore_repo)
-    print(f'Found {len(repos)} repositories')
-    print(f'Retrieving now all contributors...')
-    contributors_repo = map(lambda x: get_top_contributors_for_repo(x, github_user, github_token, n_contrib), tqdm(repos))
-    write_main_contributors_to_file(contributors_repo, out_file_path)
+@click.option("--ignore-repos", "-i", type=str, multiple=True)
+def top_contributors(github_user, github_token, github_org, out_file_path, n_contrib, ignore_repos):
+    """Retrieves the top n contributors for a github org."""
+    github_pager = GithubPager(user=github_user, token=github_token, url=f'https://api.github.com/')
+    repos = get_all_repos(github_pager, ignore_repos, github_org)
+    contributors = get_contributors(github_pager, repos)
+    top_contributors = get_top_contributors(contributors, n_contrib)
+    write_to_file(out_file_path, top_contributors)
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
@@ -242,7 +236,7 @@ def cli():
 
 # Github commands
 cli.add_command(commits_with_tag)
-cli.add_command(main_contributors)
+cli.add_command(top_contributors)
 cli.add_command(first_contribution)
 cli.add_command(unprotected_repos)
 

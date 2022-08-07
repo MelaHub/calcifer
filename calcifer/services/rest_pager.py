@@ -7,6 +7,7 @@ import math
 import json
 from pydantic import SecretStr, BaseModel, HttpUrl
 from typing import Callable
+from calcifer.utils.json_logger import logger
 
 REPO_PAGE_SIZE = 100
 
@@ -35,22 +36,22 @@ class RestPager(BaseModel):
             response = session.send(request)
             # import curlify
             # print(curlify.to_curl(response.request))
-            if response.status_code in (404, 409):
-                raise NoResponse 
-            elif response.status_code != 200:
+            if response.status_code in (404, 409, 204):
+                return []
+            elif response.status_code == 200:
+                return json.loads(response.content)
+            else:
+                logger.error(f"Failed call {request.method}/{request.url} {request.body} with response  {response.status_code} {response.content}")
                 raise Exception("Something went wrong while calling the github api")
-            return response
 
         data = []
         self.update_params(query_params)
 
         # TODO: refactor the two branches
         if self.total_param:
-            response = make_request(query_params)
-            curr_res = json.loads(response.content) # TODO: I'm actually making an extra call here
+            curr_res = make_request(query_params) # TODO: I'm actually making an extra call here
             for i in tqdm(range(0, curr_res[self.total_param], self.page_size), disable=not show_progress): # TODO: not sure if tdqm is just autocalculating the number of pages or what here
-                response = make_request(query_params)
-                curr_res = json.loads(response.content)
+                curr_res = make_request(query_params)
                 if len(curr_res):
                     self.update_params(query_params)
                     if type(curr_res) is dict:
@@ -62,11 +63,7 @@ class RestPager(BaseModel):
             return data
         else:
             while True: # TODO: this is for github that doesn't give the total number of repos; only way to do it is to use graphql https://docs.github.com/en/graphql
-                try:
-                    response = make_request(query_params)
-                    curr_res = json.loads(response.content)
-                except NoResponse:
-                    curr_res = []
+                curr_res = make_request(query_params)
                 if type(curr_res) is dict:
                     if collection_name:
                         curr_res = curr_res.get(collection_name, [])
