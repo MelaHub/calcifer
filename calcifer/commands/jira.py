@@ -1,8 +1,6 @@
-from functools import cache
 from calcifer.services.jira_pager import JiraPager
 from calcifer.utils.json_logger import logger
 import json
-from os.path import exists
 from calcifer.utils.cache import cache_to_file
 
 
@@ -16,7 +14,7 @@ def get_issues_for_project(
     jql_query = f"project={jira_project} AND createdDate > {since}"
     logger.info(f"Retrieving Jira issues with jql {jql_query}")
     issues = jira_pager.get_all_pages(
-        f"/rest/api/3/search", {"jql": jql_query}, "issues"
+        "/rest/api/3/search", {"jql": jql_query}, "issues"
     )
     return issues
 

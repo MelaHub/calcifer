@@ -1,6 +1,4 @@
-from turtle import pd
 from calcifer.services.rest_pager import RestPager
-from pydantic import HttpUrl
 
 
 class JiraPager(RestPager):

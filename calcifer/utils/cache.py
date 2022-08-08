@@ -1,15 +1,9 @@
 import tempfile
-from datetime import date
 from calcifer.utils.json_logger import logger
-from os.path import exists
 import os
 import json
 
 
-from datetime import date, datetime
-
-
-# TODO: Replace with sqlite
 def cache_to_file(file_prefix: str):
     def inner(func):
         def wrapper(*args, **kwargs):
@@ -25,7 +19,7 @@ def cache_to_file(file_prefix: str):
                 with open(os.path.join(tmp_folder, file_name), "r") as f:
                     data = json.load(f)
             else:
-                logger.info(f"No cache found, creating new one")
+                logger.info("No cache found, creating new one")
                 data = func(*args, **kwargs)
 
                 with tempfile.NamedTemporaryFile(

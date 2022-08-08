@@ -1,9 +1,6 @@
-from tokenize import String
-from turtle import pd
 import requests
 from requests.auth import HTTPBasicAuth
 from tqdm import tqdm
-import math
 import json
 from pydantic import SecretStr, BaseModel, HttpUrl
 from typing import Callable
@@ -52,7 +49,8 @@ class RestPager(BaseModel):
                 return json.loads(response.content)
             else:
                 logger.error(
-                    f"Failed call {request.method}/{request.url} {request.body} with response  {response.status_code} {response.content}"
+                    f"Failed call {response.request.method}/{response.request.url} {response.request.body} "
+                    f"with response {response.status_code} {response.content}"
                 )
                 raise Exception("Something went wrong while calling the github api")
 

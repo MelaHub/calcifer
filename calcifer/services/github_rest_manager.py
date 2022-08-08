@@ -1,9 +1,6 @@
 import requests
 from requests.auth import HTTPBasicAuth
-from datetime import datetime
-import json
 from calcifer.services.rest_pager import RestPager
-from pydantic import HttpUrl
 
 
 class GithubRestManager(RestPager):

@@ -1,17 +1,5 @@
-from distutils.file_util import write_file
-from email.policy import default
-import json
-from turtle import pd
-import requests
-from requests.auth import HTTPBasicAuth
 import click
-import csv
-from datetime import datetime
-import itertools
-from tqdm import tqdm
-from os.path import exists
 from calcifer.services.jira_pager import JiraPager
-from calcifer.utils.json_logger import logger
 from calcifer.commands.jira import (
     get_issues_for_project,
     get_issues_change_logs,
@@ -43,11 +31,16 @@ from calcifer.commands.github import (
 @click.option("--n-contrib", type=int, default=3)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
 def top_contributors(
-    github_user: str, github_token: SecretStr, github_org: str, out_file_path: str, n_contrib: int, ignore_repos: list
+    github_user: str,
+    github_token: SecretStr,
+    github_org: str,
+    out_file_path: str,
+    n_contrib: int,
+    ignore_repos: list,
 ):
     """Retrieves the top n contributors for a github org."""
     github_rest_manager = GithubRestManager(
-        user=github_user, token=github_token, url=f"https://api.github.com/"
+        user=github_user, token=github_token, url="https://api.github.com/"
     )
     repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
     contributors = get_contributors(github_rest_manager, repos)
@@ -70,7 +63,7 @@ def first_contribution(
 ):
     """Retrieves the very first contribution for all repos in an org."""
     github_rest_manager = GithubRestManager(
-        user=github_user, token=github_token, url=f"https://api.github.com/"
+        user=github_user, token=github_token, url="https://api.github.com/"
     )
     repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
     first_contributions = get_first_contributions(github_rest_manager, repos)
@@ -97,7 +90,7 @@ def commits_with_tag(
 ):
     """Retrieves all commits that matches a specific tag actoss al repositories in an organization and writes them to a csv file."""
     github_rest_manager = GithubRestManager(
-        user=github_user, token=github_token, url=f"https://api.github.com/"
+        user=github_user, token=github_token, url="https://api.github.com/"
     )
     repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
     commits = get_commits_with_tag(github_rest_manager, repos, tag)
@@ -131,7 +124,7 @@ def unprotected_repos(
     * restrictions is None
     """
     github_rest_manager = GithubRestManager(
-        user=github_user, token=github_token, url=f"https://api.github.com/"
+        user=github_user, token=github_token, url="https://api.github.com/"
     )
     repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
     repos_protections = get_repos_protections(github_rest_manager, repos, github_org)
