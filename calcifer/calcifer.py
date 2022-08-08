@@ -17,7 +17,7 @@ from pydantic import SecretStr, HttpUrl
 from pathlib import Path
 from calcifer.utils.file_writer import write_to_file
 
-from calcifer.services.github_rest_manager import GithubRestPager
+from calcifer.services.github_rest_manager import GithubRestManager
 from calcifer.commands.github import add_protection_to_repo_if_missing, get_repo_protections, get_contributors, get_repos_protections, get_top_contributors, get_all_repos, get_commits_with_tag, get_first_contributions, get_first_contributions_by_author
 
 
@@ -30,9 +30,9 @@ from calcifer.commands.github import add_protection_to_repo_if_missing, get_repo
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
 def top_contributors(github_user, github_token, github_org, out_file_path, n_contrib, ignore_repos):
     """Retrieves the top n contributors for a github org."""
-    github_pager = GithubRestPager(user=github_user, token=github_token, url=f'https://api.github.com/')
-    repos = get_all_repos(github_pager, ignore_repos, github_org)
-    contributors = get_contributors(github_pager, repos)
+    github_rest_manager = GithubRestManager(user=github_user, token=github_token, url=f'https://api.github.com/')
+    repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
+    contributors = get_contributors(github_rest_manager, repos)
     top_contributors = get_top_contributors(contributors, n_contrib)
     write_to_file(out_file_path, top_contributors)
 
@@ -44,9 +44,9 @@ def top_contributors(github_user, github_token, github_org, out_file_path, n_con
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
 def first_contribution(github_user: str, github_token: str, github_org: str, out_file_path: Path, ignore_repos: list):
     """Retrieves the very first contribution for all repos in an org."""
-    github_pager = GithubRestPager(user=github_user, token=github_token, url=f'https://api.github.com/')
-    repos = get_all_repos(github_pager, ignore_repos, github_org)
-    first_contributions = get_first_contributions(github_pager, repos)
+    github_rest_manager = GithubRestManager(user=github_user, token=github_token, url=f'https://api.github.com/')
+    repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
+    first_contributions = get_first_contributions(github_rest_manager, repos)
     first_contributions_by_author = get_first_contributions_by_author(first_contributions)
     write_to_file(out_file_path, first_contributions_by_author)
 
@@ -59,10 +59,10 @@ def first_contribution(github_user: str, github_token: str, github_org: str, out
 @click.option("--out-file-path", type=str, required=True)
 def commits_with_tag(github_user: str, github_token: SecretStr, github_org: str, ignore_repos: list, tag: str, out_file_path: Path):
     """Retrieves all commits that matches a specific tag actoss al repositories in an organization and writes them to a csv file."""
-    github_pager = GithubRestPager(user=github_user, token=github_token, url=f'https://api.github.com/')
-    repos = get_all_repos(github_pager, ignore_repos, github_org)
-    commits = get_commits_with_tag(github_pager, repos, tag)
-    write_to_file(out_file_path, commits, ["repo", "tag", "author", "message", "date"])
+    github_rest_manager = GithubRestManager(user=github_user, token=github_token, url=f'https://api.github.com/')
+    repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
+    commits = get_commits_with_tag(github_rest_manager, repos, tag)
+    write_to_file(out_file_path, commits)
 
 
 @click.command()
@@ -84,13 +84,13 @@ def unprotected_repos(github_user: str, github_token: SecretStr, github_org: str
     * enforce_admins is False
     * restrictions is None
     """
-    github_pager = GithubRestPager(user=github_user, token=github_token, url=f'https://api.github.com/')
-    repos = get_all_repos(github_pager, ignore_repos, github_org)
-    repos_protections = get_repos_protections(github_pager, repos, github_org)
+    github_rest_manager = GithubRestManager(user=github_user, token=github_token, url=f'https://api.github.com/')
+    repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
+    repos_protections = get_repos_protections(github_rest_manager, repos, github_org)
     flatten_repos_protections = get_repo_protections(repos_protections)
 
     if add_protection_if_missing:
-        add_protection_to_repo_if_missing(github_pager, flatten_repos_protections, github_org)
+        add_protection_to_repo_if_missing(github_rest_manager, flatten_repos_protections, github_org)
 
     write_to_file(out_file_path, flatten_repos_protections)
 
