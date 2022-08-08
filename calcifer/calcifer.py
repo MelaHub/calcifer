@@ -1,59 +1,27 @@
-import json
-from turtle import pd
-import requests
-from requests.auth import HTTPBasicAuth
 import click
-import csv
-from datetime import datetime
-import itertools
-from tqdm import tqdm
+from calcifer.services.jira_pager import JiraPager
+from calcifer.commands.jira import (
+    get_issues_for_project,
+    get_issues_change_logs,
+    get_comments_by_issue,
+)
+from pydantic import SecretStr, HttpUrl
+from pathlib import Path
+from calcifer.utils.file_writer import write_to_file
 
-from calcifer.services.github import get_all_repos, get_contributors_for_repo, get_commits_for_repo, get_commits_for_repo_with_tag, get_commit_with_sha
+from calcifer.services.github_rest_manager import GithubRestManager
+from calcifer.commands.github import (
+    add_protection_to_repo_if_missing,
+    get_repo_protections,
+    get_contributors,
+    get_repos_protections,
+    get_top_contributors,
+    get_all_repos,
+    get_commits_with_tag,
+    get_first_contributions,
+    get_first_contributions_by_author,
+)
 
-TAG_RELEASE = 'release-2021'
-
-
-def print_iterator(it):
-    for x in it:
-        print(x, end=' ')
-    print('') 
-
-def get_top_contributors_for_repo(repo, github_user, github_token, n_contrib):
-    content = get_contributors_for_repo(repo, github_user, github_token)
-    return {
-        'full_name': repo['full_name'],
-        'total_commits': sum([x['contributions'] for x in content]),
-        'contributors': [{'login': c['login'], 'contributions': c['contributions']} for c in content[0:n_contrib]]
-    }
-
-def write_main_contributors_to_file(contributors_repo, out_file_path):
-    def get_key_by_index_or_empty(contributors, index, key):
-        return contributors['contributors'][index][key] if len(contributors['contributors']) >= (index + 1) else ''
-
-    contributors_by_repo = [{
-        'full_name': r['full_name'],
-        'total_commits': r['total_commits'],
-        'contributor1': get_key_by_index_or_empty(r, 0, 'login'),
-        'contributions1': get_key_by_index_or_empty(r, 0, 'contributions'),
-        'contributor2': get_key_by_index_or_empty(r, 1, 'login'),
-        'contributions2': get_key_by_index_or_empty(r, 1, 'contributions'),
-        'contributor3': get_key_by_index_or_empty(r, 2, 'login'),
-        'contributions3': get_key_by_index_or_empty(r, 2, 'contributions')}
-         for r in contributors_repo]
-
-    if not len(contributors_by_repo):
-        print("No data found")
-        return
-
-    with open(out_file_path, 'w') as csvfile: 
-        writer = csv.DictWriter(csvfile, fieldnames=contributors_by_repo[0].keys())
-
-        writer.writeheader()
-        for contrib in contributors_by_repo:
-            writer.writerow(contrib)
-
-    print(f'I\'ve written {len(contributors_by_repo)} to {out_file_path}')
-    
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
@@ -61,108 +29,211 @@ def write_main_contributors_to_file(contributors_repo, out_file_path):
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--n-contrib", type=int, default=3)
-@click.option("--ignore-repo", "-i", type=str, multiple=True)
-def main_contributors(github_user, github_token, github_org, out_file_path, n_contrib, ignore_repo):
-    repos = get_all_repos(github_org, github_user, github_token, ignore_repo)
-    print(f'Found {len(repos)} repositories')
-    print(f'Retrieving now all contributors...')
-    contributors_repo = map(lambda x: get_top_contributors_for_repo(x, github_user, github_token, n_contrib), tqdm(repos))
-    write_main_contributors_to_file(contributors_repo, out_file_path)
+@click.option("--ignore-repos", "-i", type=str, multiple=True)
+def top_contributors(
+    github_user: str,
+    github_token: SecretStr,
+    github_org: str,
+    out_file_path: str,
+    n_contrib: int,
+    ignore_repos: list,
+):
+    """Retrieves the top n contributors for a github org."""
+    github_rest_manager = GithubRestManager(
+        user=github_user, token=github_token, url="https://api.github.com/"
+    )
+    repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
+    contributors = get_contributors(github_rest_manager, repos)
+    top_contributors = get_top_contributors(contributors, n_contrib)
+    write_to_file(out_file_path, top_contributors)
 
-def get_first_contribution_by_repo(repo, github_user, github_token):
-    commits = get_commits_for_repo(repo, github_user, github_token)
-    date_commits = [{'author': c['commit']['author']['name'], 'date': datetime.strptime(c['commit']['author']['date'], '%Y-%m-%dT%H:%M:%SZ')} for c in commits]        
-    return {
-        author: {
-            'date': min(commit['date'] for commit in commits),
-            'repo': repo['name']
-        }
-        for author, commits in itertools.groupby(date_commits, lambda x: x['author'])}
 
-def get_commits_with_tag(repo, github_user, github_token, tag):
-    commits_with_tag = get_commits_for_repo_with_tag(repo, github_user, github_token, tag)
-    commits_with_tag_details = []
-    for commit in commits_with_tag:
-        commit_details = get_commit_with_sha(repo, github_user, github_token, commit['commit']['sha'])
-        commits_with_tag_details.append(
-            {
-                'repo': repo['name'],
-                'tag': commit['name'],
-                'author': commit_details['commit']['author']['name'],
-                'message': commit_details['commit']['message'].replace('\n', '; '),
-                'date': commit_details['commit']['author']['date']
-            }
+@click.command()
+@click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-org", type=str, required=True)
+@click.option("--out-file-path", type=str, required=True)
+@click.option("--ignore-repos", "-i", type=str, multiple=True)
+def first_contribution(
+    github_user: str,
+    github_token: SecretStr,
+    github_org: str,
+    out_file_path: Path,
+    ignore_repos: list,
+):
+    """Retrieves the very first contribution for all repos in an org."""
+    github_rest_manager = GithubRestManager(
+        user=github_user, token=github_token, url="https://api.github.com/"
+    )
+    repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
+    first_contributions = get_first_contributions(github_rest_manager, repos)
+    first_contributions_by_author = get_first_contributions_by_author(
+        first_contributions
+    )
+    write_to_file(out_file_path, first_contributions_by_author)
+
+
+@click.command()
+@click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-org", type=str, required=True)
+@click.option("--ignore-repos", "-i", type=str, multiple=True)
+@click.option("--tag", type=str, required=True)
+@click.option("--out-file-path", type=str, required=True)
+def commits_with_tag(
+    github_user: str,
+    github_token: SecretStr,
+    github_org: str,
+    ignore_repos: list,
+    tag: str,
+    out_file_path: Path,
+):
+    """Retrieves all commits that matches a specific tag actoss al repositories in an organization and writes them to a csv file."""
+    github_rest_manager = GithubRestManager(
+        user=github_user, token=github_token, url="https://api.github.com/"
+    )
+    repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
+    commits = get_commits_with_tag(github_rest_manager, repos, tag)
+    write_to_file(out_file_path, commits)
+
+
+@click.command()
+@click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-org", type=str, required=True)
+@click.option("--out-file-path", type=str, required=True)
+@click.option("--ignore-repos", "-i", type=str, multiple=True)
+@click.option("--add-protection-if-missing", type=bool, required=True, default=False)
+def unprotected_repos(
+    github_user: str,
+    github_token: SecretStr,
+    github_org: str,
+    out_file_path: Path,
+    ignore_repos: list,
+    add_protection_if_missing: bool,
+):
+    """Retrieves all unprotected repos in an organization and writes them to a csv file.
+
+    A protected repo is one that satisfy the following rules:
+    * required_pull_request_reviews.dismiss_stale_reviews is True
+    * required_pull_request_reviews.required_approving_review_count > 0
+    * required_linear_history is True
+        * allow_force_pushes is False
+        * required_status_checks.strict is True
+    * enforce_admins is False
+    * restrictions is None
+    """
+    github_rest_manager = GithubRestManager(
+        user=github_user, token=github_token, url="https://api.github.com/"
+    )
+    repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
+    repos_protections = get_repos_protections(github_rest_manager, repos, github_org)
+    flatten_repos_protections = get_repo_protections(repos_protections)
+
+    if add_protection_if_missing:
+        add_protection_to_repo_if_missing(
+            github_rest_manager, flatten_repos_protections, github_org
         )
-    return commits_with_tag_details
 
-def write_commits_on_file(commit_details, out_file_path):
-    with open(out_file_path, 'w') as csvfile: 
-        writer = csv.DictWriter(csvfile, fieldnames=commit_details[0].keys())
+    write_to_file(out_file_path, flatten_repos_protections)
 
-        writer.writeheader()
-        for commit in commit_details:
-            writer.writerow(commit)
-
-    print(f'I\'ve written {len(commit_details)} to {out_file_path}')
-
-def write_first_contribution_to_file(first_contributions, out_file_path):
-    def get_key_by_index_or_empty(contributors, index, key):
-        return contributors['contributors'][index][key] if len(contributors['contributors']) >= (index + 1) else ''
-
-    first_contributions_flat = [{
-        'author': author,
-        'date': first_contributions[author]['date'],
-        'repo_name': first_contributions[author]['repo']}
-         for author in first_contributions]
-
-    if not len(first_contributions_flat):
-        print("No data found")
-        return
-
-    with open(out_file_path, 'w') as csvfile: 
-        writer = csv.DictWriter(csvfile, fieldnames=first_contributions_flat[0].keys())
-
-        writer.writeheader()
-        for contrib in first_contributions_flat:
-            writer.writerow(contrib)
-
-    print(f'I\'ve written {len(first_contributions_flat)} to {out_file_path}')
 
 @click.command()
-@click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
-@click.option("--github-org", type=str, required=True)
+@click.option("--jira-user", envvar="JIRA_USER", type=str, required=True)
+@click.option("--jira-api-token", envvar="JIRA_API_TOKEN", type=str, required=True)
+@click.option(
+    "--jira-url",
+    envvar="JIRA_URL",
+    type=str,
+    required=True,
+    default="https://instapartners.atlassian.net",
+)
+@click.option("--search-for-user", type=str, required=True)
+@click.option("--jira-project", type=str, required=True)
+@click.option(
+    "--since", envvar="SINCE", type=str, required=True, default="startOfYear()"
+)
 @click.option("--out-file-path", type=str, required=True)
-@click.option("--ignore-repo", "-i", type=str, multiple=True)
-def first_contribution(github_user, github_token, github_org, out_file_path, ignore_repo):
-    repos = get_all_repos(github_org, github_user, github_token, ignore_repo)
-    print(f'Found {len(repos)} repositories')
-    print(f'Retrieving now all contributors...')
-    first_contributions = {}
-    contributions_in_repo = map(lambda x: get_first_contribution_by_repo(x, github_user, github_token), tqdm(repos))
-    for contribution in contributions_in_repo:
-        for author in contribution:
-            if first_contributions.setdefault(author, {'date': datetime.now(), 'repo': contribution[author]['repo']})['date'] > contribution[author]['date']:
-                first_contributions[author] = contribution[author]
-    write_first_contribution_to_file(first_contributions, out_file_path)
+def issues_with_comments_by(
+    jira_user: str,
+    jira_api_token: SecretStr,
+    jira_url: HttpUrl,
+    search_for_user: str,
+    jira_project: str,
+    since: str,
+    out_file_path: Path,
+):
+    jira_pager = JiraPager(user=jira_user, token=jira_api_token, url=jira_url)
+    issues = get_issues_for_project(jira_pager, jira_project, since)
+    issues_comments = get_comments_by_issue(jira_pager, issues, search_for_user)
+    write_to_file(out_file_path, issues_comments)
+
 
 @click.command()
-@click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
-@click.option("--github-org", type=str, required=True)
+@click.option("--jira-user", envvar="JIRA_USER", type=str, required=True)
+@click.option("--jira-api-token", envvar="JIRA_API_TOKEN", type=str, required=True)
+@click.option(
+    "--jira-url",
+    envvar="JIRA_URL",
+    type=str,
+    required=True,
+    default="https://instapartners.atlassian.net",
+)
+@click.option("--jira-project", envvar="JIRA_PROJECT", type=str, required=True)
+@click.option(
+    "--since", envvar="SINCE", type=str, required=True, default="startOfYear()"
+)
 @click.option("--out-file-path", type=str, required=True)
-@click.option("--ignore-repo", "-i", type=str, multiple=True)
-def audit_releases(github_user, github_token, github_org, out_file_path, ignore_repo):
-    repos = get_all_repos(github_org, github_user, github_token, ignore_repo)
-    print(f'Found {len(repos)} repositories')
-    print(f'Retrieving now all releases of this year...')
-    commits = [c for c in map(lambda x: get_commits_with_tag(x, github_user, github_token, TAG_RELEASE), tqdm(repos))]
-    write_commits_on_file([c for commits_per_repo in commits for c in commits_per_repo], out_file_path)
+def issues_change_status_log(
+    jira_user: str,
+    jira_api_token: SecretStr,
+    jira_url: HttpUrl,
+    jira_project: str,
+    since: str,
+    out_file_path: Path,
+):
+    """This command retrieves the list of all status changes for all issues created from `since` of project `jira_project`."""
+    jira_pager = JiraPager(user=jira_user, token=jira_api_token, url=jira_url)
+    issues = get_issues_for_project(jira_pager, jira_project, since)
+    change_log = get_issues_change_logs(jira_pager, issues)
+    write_to_file(out_file_path, change_log)
+
 
 @click.group()
 def cli():
+    """
+    \b
+                                       /
+                                     */     ,
+                                   /// .      /
+                               * ./////*      /
+                                *//////////      /
+                      /     //  ////////////   *// *
+                     ///   /////////////////   .////
+                  /.      /////////,//,/////  ./////////
+                   ///    ////////,*/,,,/////////////////   /   ,
+                   ////   //////*,,,*,,,,////,,,,/////////  *//
+                * ,////* //////,,,,,,,,,,///,,,,,,,///////  //
+               / *///////////*,,,,,,,,,,.,,,,,,,,,,,/,,///  ///
+                 ///////,///,,,,,,.,,,,,..,.,,,,,,,,,,,/////////  ,
+                 //////*,,,,,,,,,.....,........,,,,,,,,///,,,,///  /  ,
+              /  *////,,,,,,,,,..................,,,,,,,,,,,,,,///  /
+             //   ///,,,,,,,,,....................     ,,,,,,,,///
+            ////////,,,,,*      *............... .%%    (,,,,,*///    *
+            ////////,,,,     %%  %............./         /,,,,///  //
+            //////,,,,,*         ..............%         ,,,*////////
+            /////,,,,,,,%       (................%    %,,,,,,,,/////
+             ////,,,,,,,..................,,,,,,,,,,..,,,,,,,,/////&/.
+    """
     pass
 
-cli.add_command(main_contributors)
+
+# Github commands
+cli.add_command(commits_with_tag)
+cli.add_command(top_contributors)
 cli.add_command(first_contribution)
-cli.add_command(audit_releases)
+cli.add_command(unprotected_repos)
+
+# Jira commands
+cli.add_command(issues_with_comments_by)
+cli.add_command(issues_change_status_log)

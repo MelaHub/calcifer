@@ -2,23 +2,40 @@
 
 A Python tool to fetch stats across all repos within an org.
 
+                                       /                                       
+                                     */     ,                                   
+                                   /// .      /                                 
+                               * ./////*      /                                 
+                                *//////////      /                              
+                      /     //  ////////////   *// *                            
+                     ///   /////////////////   .////                            
+                  /.      /////////,//,/////  ./////////                        
+                   ///    ////////,*/,,,/////////////////   /   ,               
+                   ////   //////*,,,*,,,,////,,,,/////////  *//                 
+                * ,////* //////,,,,,,,,,,///,,,,,,,///////  //                  
+               / *///////////*,,,,,,,,,,.,,,,,,,,,,,/,,///  ///                 
+                 ///////,///,,,,,,.,,,,,..,.,,,,,,,,,,,/////////  ,             
+                 //////*,,,,,,,,,.....,........,,,,,,,,///,,,,///  /  ,         
+              /  *////,,,,,,,,,..................,,,,,,,,,,,,,,///  /           
+             //   ///,,,,,,,,,....................     ,,,,,,,,///              
+            ////////,,,,,*      *............... .%%    (,,,,,*///    *         
+            ////////,,,,     %%  %............./         /,,,,///  //           
+            //////,,,,,*         ..............%         ,,,*////////           
+            /////,,,,,,,%       (................%    %,,,,,,,,/////            
+             ////,,,,,,,..................,,,,,,,,,,..,,,,,,,,/////&/.   
+
 ## How to
 
-`poetry run calcifer <command> --github-org <orgname> --out-file-path <fullpath> --github-user <githubuser> --github-token <githubtoken>`
+By running `poetry run calcifer` you'll get all the commands you can use. By running then `run calcifer <command> --help` you'll get how to run each command.
 
-## Prod release audit
+Availabel commands are
+* github: all commands here use unarchived repos
+** commits-with-tag: retrieves the list of commits across al repos with a specific tag; if you use a release tag this can be used to extract all releases
+** first-contribution: retrieves for all the people contributing to an org the very first contribution
+** top-contributors: retrieves the top contributors for each repo in an org
+** unprotected-repos: retrieves all repos not protected in an org
+* jira
+** issues-change-status-log: retrieves the list of status change of all Jira issues from a specific project created from a specific date
+** issues-with-comments-by: retrieves the list of issues that had at least one comment from a specific person
 
-The output is a CSV file with all releases done in 2021.
-
-`poetry run calcifer audit-releases --github-org <orgname> --out-file-path <fullpath> --github-user <githubuser> --github-token <githubtoken>`
-
-## Top contributors
-
-The output is a CSV file with the top n contributors from the same org, with n defaulted to 3 or set via --n-contrib.
-
-`poetry run calcifer main-contributions --github-org <orgname> --out-file-path <fullpath> --github-user <githubuser> --github-token <githubtoken>`
-
-## First contribution
-
-`poetry run calcifer first-contribution --github-org <orgname> --out-file-path <fullpath> --github-user <githubuser> --github-token <githubtoken>`
-  
+Note that all repos caches results in a temporary file. By running the command, you'll get the name of the file the cache is saved to, and to refresh the cache at the moment you need to manually delete the file.
