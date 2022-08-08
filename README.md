@@ -33,7 +33,7 @@ Availabel commands are
 ** commits-with-tag: retrieves the list of commits across al repos with a specific tag; if you use a release tag this can be used to extract all releases
 ** first-contribution: retrieves for all the people contributing to an org the very first contribution
 ** top-contributors: retrieves the top contributors for each repo in an org
-** unprotected-repos
+** unprotected-repos: retrieves all repos not protected in an org
 * jira
 ** issues-change-status-log: retrieves the list of status change of all Jira issues from a specific project created from a specific date
 ** issues-with-comments-by

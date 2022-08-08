@@ -1,3 +1,4 @@
+from distutils.file_util import write_file
 import json
 from turtle import pd
 import requests
@@ -15,8 +16,8 @@ from pydantic import SecretStr
 from pathlib import Path
 from calcifer.utils.file_writer import write_to_file
 
-from calcifer.services.github_pager import GithubPager, get_branch_protection
-from calcifer.commands.github import get_contributors, get_top_contributors, get_all_repos, get_commits_with_tag, get_first_contributions, get_first_contributions_by_author
+from calcifer.services.github_pager import GithubPager
+from calcifer.commands.github import get_repo_protections, get_contributors, get_repos_protections, get_top_contributors, get_all_repos, get_commits_with_tag, get_first_contributions, get_first_contributions_by_author
 
 
 def write_main_contributors_to_file(contributors_repo, out_file_path):
@@ -91,26 +92,6 @@ def commits_with_tag(github_user: str, github_token: SecretStr, github_org: str,
     commits = get_commits_with_tag(github_pager, repos, tag)
     write_to_file(out_file_path, commits, ["repo", "tag", "author", "message", "date"])
 
-def get_repo_protections(repo, github_user, github_token):
-    default_branch = repo['default_branch']
-    protection = get_branch_protection('credimi', repo['name'], github_user, github_token, default_branch)
-    required_status_check = protection.get('required_status_checks', {}).get('strict', False)
-    dismiss_stale_review = protection.get('required_pull_request_reviews', {}).get('dismiss_stale_reviews', False)
-    require_approving_review_count = protection.get('required_pull_request_reviews', {}).get('required_approving_review_count', 0)
-    allow_force_pushes = protection.get('allow_force_pushes', {}).get('enabled', True)
-    require_linear_history = protection.get('required_linear_history', {}).get('enabled', False)
-    
-    repo.update({
-        'required_status_checks': required_status_check,
-        'dismiss_stale_review': dismiss_stale_review,
-        'require_approving_review_count': require_approving_review_count,
-        'allow_force_pushes': allow_force_pushes,
-        'require_linear_history': require_linear_history,
-        'is_protection_missing': not bool(protection),
-        'is_protected_weird': require_linear_history and required_status_check and dismiss_stale_review and require_approving_review_count > 0 and not allow_force_pushes
-    }
-    )
-    return repo
 
 def write_repos_on_file(repo_details, out_file_path):
     headers = ['name', 'required_status_checks', 'dismiss_stale_review','require_approving_review_count', 'allow_force_pushes', 'require_linear_history', 'is_protected_weird', 'is_protection_missing']
@@ -129,19 +110,32 @@ def write_repos_on_file(repo_details, out_file_path):
 @click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
-@click.option("--ignore-repo", "-i", type=str, multiple=True)
-def unprotected_repos(github_user, github_token, github_org, out_file_path, ignore_repo):
-    repos = get_all_repos(github_org, github_user, github_token, ignore_repo)
-    print(f'Found {len(repos)} repositories')
-    print(f'Checking whether the main branch is protected')
-    repo_protections = [r for r in map(lambda x: get_repo_protections(x, github_user, github_token), tqdm(repos))]
-    repos_with_weird_protection = [r for r in repo_protections if not r['is_protected_weird']]
+@click.option("--ignore-repos", "-i", type=str, multiple=True)
+def unprotected_repos(github_user, github_token, github_org, out_file_path, ignore_repos):
+    """Retrieves all unprotected repos in an organization and writes them to a csv file.
+    
+    A protected repo is one that satisfy the following rules:
+    * required_pull_request_reviews.dismiss_stale_reviews is True
+    * required_pull_request_reviews.required_approving_review_count > 0
+    * required_linear_history is True
+	* allow_force_pushes is False
+	* required_status_checks.strict is True
+    * enforce_admins is False
+    * restrictions is None
+    """
+    github_pager = GithubPager(user=github_user, token=github_token, url=f'https://api.github.com/')
+    repos = get_all_repos(github_pager, ignore_repos, github_org)
+    repos_protections = get_repos_protections(github_pager, repos, github_org)
+    flatten_repos_protections = get_repo_protections(repos_protections)
+    write_to_file(out_file_path, flatten_repos_protections)
+    
+    # repos_with_weird_protection = [r for r in repo_protections if not r['is_protected_weird']]
     # unprotected_repos = [repo for repo in repo_protections if repo['is_protection_missing']]
     # print(f'Adding protection to {len(unprotected_repos)}')
     # for i, repo in enumerate(unprotected_repos):
     #     print(f'{i+1}/{len(unprotected_repos)} {repo["name"]}')
     #     add_branch_protection('credimi', repo['name'], github_user, github_token, repo['default_branch'])
-    write_repos_on_file([repo for repo in repos_with_weird_protection], out_file_path)
+    #write_repos_on_file([repo for repo in repos_with_weird_protection], out_file_path)
 
 
 #TODO: parametrizzare progetto e created date

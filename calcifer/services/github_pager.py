@@ -21,12 +21,6 @@ class GithubPager(RestPager):
             self.page_param: 0
         })
 
-def get_branch_protection(github_org, github_repo_name, github_user, github_token, main_branch):
-    response = requests.get(f'https://api.github.com/repos/{github_org}/{github_repo_name}/branches/{main_branch}/protection', auth = HTTPBasicAuth(github_user, github_token))
-    if response.status_code == 404:
-        return {}
-    return json.loads(response.content)
-
 DEFAULT_PROTECTION = {
 	"required_pull_request_reviews": {
 		"dismiss_stale_reviews": True,
