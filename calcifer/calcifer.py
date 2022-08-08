@@ -43,7 +43,7 @@ from calcifer.commands.github import (
 @click.option("--n-contrib", type=int, default=3)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
 def top_contributors(
-    github_user, github_token, github_org, out_file_path, n_contrib, ignore_repos
+    github_user: str, github_token: SecretStr, github_org: str, out_file_path: str, n_contrib: int, ignore_repos: list
 ):
     """Retrieves the top n contributors for a github org."""
     github_rest_manager = GithubRestManager(
@@ -63,7 +63,7 @@ def top_contributors(
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
 def first_contribution(
     github_user: str,
-    github_token: str,
+    github_token: SecretStr,
     github_org: str,
     out_file_path: Path,
     ignore_repos: list,
