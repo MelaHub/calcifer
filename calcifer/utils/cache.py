@@ -11,9 +11,7 @@ from datetime import date, datetime
 
 # TODO: Replace with sqlite
 def cache_to_file(file_prefix: str):
-
     def inner(func):
-     
         def wrapper(*args, **kwargs):
             tmp_folder = tempfile.gettempdir()
             file_name = None
@@ -24,18 +22,19 @@ def cache_to_file(file_prefix: str):
 
             if file_name:
                 logger.info(f"Found cache, reading data from {tmp_folder}/{file_name}")
-                with open(os.path.join(tmp_folder, file_name), 'r') as f:
+                with open(os.path.join(tmp_folder, file_name), "r") as f:
                     data = json.load(f)
             else:
                 logger.info(f"No cache found, creating new one")
                 data = func(*args, **kwargs)
-        
-                with tempfile.NamedTemporaryFile(mode='w', prefix=file_prefix, delete=False) as f:
+
+                with tempfile.NamedTemporaryFile(
+                    mode="w", prefix=file_prefix, delete=False
+                ) as f:
                     logger.info(f"Saving cache to {f.name}")
                     json.dump(data, f)
             return data
-        
+
         return wrapper
 
     return inner
- 
