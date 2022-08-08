@@ -31,11 +31,7 @@ class RestPager(BaseModel):
             path = path.replace(self.url, '')
 
         def make_request(query_params: dict):
-            session = requests.Session()
-            request = requests.Request('GET', f'{self.url}{path}', params=query_params, auth=HTTPBasicAuth(self.user, self.token.get_secret_value())).prepare()
-            response = session.send(request)
-            # import curlify
-            # print(curlify.to_curl(response.request))
+            response = requests.get(f'{self.url}{path}', params=query_params, auth=HTTPBasicAuth(self.user, self.token.get_secret_value()))
             if response.status_code in (404, 409, 204):
                 return []
             elif response.status_code == 200:
