@@ -11,8 +11,8 @@ from tqdm import tqdm
 from os.path import exists
 from calcifer.services.jira_pager import JiraPager
 from calcifer.utils.json_logger import logger
-from calcifer.commands.jira import get_issues_for_project, get_issues_change_logs
-from pydantic import SecretStr
+from calcifer.commands.jira import get_issues_for_project, get_issues_change_logs, get_comments_by_issue
+from pydantic import SecretStr, HttpUrl
 from pathlib import Path
 from calcifer.utils.file_writer import write_to_file
 
@@ -111,7 +111,7 @@ def write_repos_on_file(repo_details, out_file_path):
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
-def unprotected_repos(github_user, github_token, github_org, out_file_path, ignore_repos):
+def unprotected_repos(github_user: str, github_token: SecretStr, github_org: str, out_file_path: Path, ignore_repos: list):
     """Retrieves all unprotected repos in an organization and writes them to a csv file.
     
     A protected repo is one that satisfy the following rules:
@@ -144,43 +144,18 @@ def unprotected_repos(github_user, github_token, github_org, out_file_path, igno
 @click.option("--jira-api-token", envvar="JIRA_API_TOKEN", type=str, required=True)
 @click.option("--jira-url", envvar="JIRA_URL", type=str, required=True, default='https://instapartners.atlassian.net')
 @click.option("--search-for-user", type=str, required=True)
-def issues_with_comments_by(jira_user, jira_api_token, jira_url, search_for_user):
-    issues_cache = './issues_cache.json'
-    if exists(issues_cache):
-        with open(issues_cache, 'r') as f:
-            issues = json.load(f)  
-    else:
-        issues = get_all_pages(
-            f'{jira_url}/rest/api/3/search', 
-            {'jql': 'project="Product support" AND createdDate > startOfYear()'}, 
-            'issues',
-            jira_user, 
-            jira_api_token)
-        with open(issues_cache, 'w') as f:
-            json.dump(issues, f)
+@click.option("--jira-project", type=str, required=True)
+@click.option("--since", envvar="SINCE", type=str, required=True, default="startOfYear()")
+@click.option("--out-file-path", type=str, required=True)
+def issues_with_comments_by(jira_user: str, jira_api_token: SecretStr, jira_url: HttpUrl, search_for_user: str, jira_project: str, since: str, out_file_path: Path):
+    jira_pager = JiraPager(
+        user=jira_user, 
+        token=jira_api_token, 
+        url=jira_url)
+    issues = get_issues_for_project(jira_pager, jira_project, since)
+    issues_comments = get_comments_by_issue(jira_pager, issues, search_for_user)
+    write_to_file(out_file_path, issues_comments)
 
-    comments_cache = './comments_by.json'
-    if exists(comments_cache):
-        with open(comments_cache, 'r') as f:
-            issues_with_comments_by = json.load(f)  
-    else:
-        issues_with_comments_by = [comment for comment in map(
-            lambda x: get_comments_by_issue(x, jira_url, jira_user, jira_api_token, search_for_user), tqdm(issues)) if comment]
-        with open(comments_cache, 'w') as f:
-            json.dump(issues_with_comments_by, f)
-
-    with open('comments.csv', 'w') as f:
-        f.write('issue,created\n')
-        for issue in issues_with_comments_by:
-            f.write(f'{issue[0]},{issue[1]}\n')
-
-def get_comments_by_issue(issue, jira_url, jira_user, jira_api_token, search_for_user):
-    comments = get_all_pages(
-        f'{jira_url}/rest/api/3/issue/{issue["key"]}/comment', {}, 'comments', jira_user, jira_api_token)
-    for comment in comments:
-        if comment['author']['displayName'] == search_for_user:
-            return [issue['key'], issue['fields']['created']]
-    return None
 
 @click.command()
 @click.option("--jira-user", envvar="JIRA_USER", type=str, required=True)
@@ -189,7 +164,7 @@ def get_comments_by_issue(issue, jira_url, jira_user, jira_api_token, search_for
 @click.option("--jira-project", envvar="JIRA_PROJECT", type=str, required=True)
 @click.option("--since", envvar="SINCE", type=str, required=True, default="startOfYear()")
 @click.option("--out-file-path", type=str, required=True)
-def issues_change_status_log(jira_user: str, jira_api_token: SecretStr, jira_url: str, jira_project: str, since: str, out_file_path: Path):
+def issues_change_status_log(jira_user: str, jira_api_token: SecretStr, jira_url: HttpUrl, jira_project: str, since: str, out_file_path: Path):
     """This command retrieves the list of all status changes for all issues created from `since` of project `jira_project`."""
     jira_pager = JiraPager(
         user=jira_user, 

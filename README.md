@@ -36,6 +36,6 @@ Availabel commands are
 ** unprotected-repos: retrieves all repos not protected in an org
 * jira
 ** issues-change-status-log: retrieves the list of status change of all Jira issues from a specific project created from a specific date
-** issues-with-comments-by
+** issues-with-comments-by: retrieves the list of issues that had at least one comment from a specific person
 
 Note that all repos caches results in a temporary file. By running the command, you'll get the name of the file the cache is saved to, and to refresh the cache at the moment you need to manually delete the file.

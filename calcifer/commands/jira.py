@@ -34,3 +34,19 @@ def get_issues_change_logs(jira_pager: JiraPager, issues: json) -> list:
                     assignee = i['fields']['assignee']['displayName'] if i['fields']['assignee'] else None
                     change_logs.append({'key': i['key'], 'assignee': assignee, 'created': log['created'], 'from': field['fromString'], 'to': field['toString']})
     return change_logs
+
+@cache_to_file(file_prefix='comments_by_issue')
+def get_comments_by_issue(jira_pager: JiraPager, issues: json, search_for_user: str) -> list:
+    issues_with_comments_by = []
+
+    for issue in tqdm(issues):
+        comments = jira_pager.get_all_pages(
+            f'/rest/api/3/issue/{issue["key"]}/comment',
+            {},
+            'comments',
+            show_progress=False
+        )
+        for comment in comments:
+            if comment['author']['displayName'] == search_for_user:
+                issues_with_comments_by.append({'key': issue['key'], 'creationdate': issue['fields']['created']})
+    return issues_with_comments_by
