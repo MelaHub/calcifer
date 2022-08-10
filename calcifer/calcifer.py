@@ -97,6 +97,31 @@ def commits_with_tag(
     write_to_file(out_file_path, commits)
 
 
+
+@click.command()
+@click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-org", type=str, required=True)
+@click.option("--ignore-repos", "-i", type=str, multiple=True)
+@click.option("--tag", type=str, required=True)
+@click.option("--out-file-path", type=str, required=True)
+def empty_repos(
+    github_user: str,
+    github_token: SecretStr,
+    github_org: str,
+    ignore_repos: list,
+    tag: str,
+    out_file_path: Path,
+):
+    """Retrieves all repos with no commits and writes them to a csv file."""
+    github_rest_manager = GithubRestManager(
+        user=github_user, token=github_token, url="https://api.github.com/"
+    )
+    repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
+    commits = get_commits_with_tag(github_rest_manager, repos, tag)
+    write_to_file(out_file_path, commits)
+
+
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
 @click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
@@ -233,6 +258,7 @@ cli.add_command(commits_with_tag)
 cli.add_command(top_contributors)
 cli.add_command(first_contribution)
 cli.add_command(unprotected_repos)
+cli.add_command(empty_repos)
 
 # Jira commands
 cli.add_command(issues_with_comments_by)
