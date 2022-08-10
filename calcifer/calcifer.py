@@ -125,6 +125,27 @@ def empty_repos(
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
 @click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
 @click.option("--github-org", type=str, required=True)
+@click.option("--ignore-repos", "-i", type=str, multiple=True)
+@click.option("--out-file-path", type=str, required=True)
+def repos_not_on_main(
+    github_user: str,
+    github_token: SecretStr,
+    github_org: str,
+    ignore_repos: list,
+    out_file_path: Path,
+):
+    """Retrieves all repos whose main branch is not called main."""
+    github_rest_manager = GithubRestManager(
+        user=github_user, token=github_token, url="https://api.github.com/"
+    )
+    repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
+    write_to_file(out_file_path, [repo for repo in repos if repo['default_branch'] != "main"])
+
+
+@click.command()
+@click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
 @click.option("--add-protection-if-missing", type=bool, required=True, default=False)
@@ -258,6 +279,7 @@ cli.add_command(top_contributors)
 cli.add_command(first_contribution)
 cli.add_command(unprotected_repos)
 cli.add_command(empty_repos)
+cli.add_command(repos_not_on_main)
 
 # Jira commands
 cli.add_command(issues_with_comments_by)
