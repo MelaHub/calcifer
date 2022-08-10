@@ -12,14 +12,15 @@ from calcifer.utils.file_writer import write_to_file
 from calcifer.services.github_rest_manager import GithubRestManager
 from calcifer.commands.github import (
     add_protection_to_repo_if_missing,
-    get_repo_protections,
-    get_contributors,
-    get_repos_protections,
-    get_top_contributors,
     get_all_repos,
     get_commits_with_tag,
-    get_first_contributions,
+    get_contributors,
     get_first_contributions_by_author,
+    get_first_contributions,
+    get_repo_protections,
+    get_repos_first_page_commits,
+    get_repos_protections,
+    get_top_contributors,
 )
 
 
@@ -103,14 +104,12 @@ def commits_with_tag(
 @click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
-@click.option("--tag", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 def empty_repos(
     github_user: str,
     github_token: SecretStr,
     github_org: str,
     ignore_repos: list,
-    tag: str,
     out_file_path: Path,
 ):
     """Retrieves all repos with no commits and writes them to a csv file."""
@@ -118,7 +117,7 @@ def empty_repos(
         user=github_user, token=github_token, url="https://api.github.com/"
     )
     repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
-    commits = get_commits_with_tag(github_rest_manager, repos, tag)
+    commits = get_repos_first_page_commits(github_rest_manager, repos)
     write_to_file(out_file_path, commits)
 
 
