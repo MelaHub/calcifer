@@ -212,6 +212,14 @@ def get_top_contributors(contributors, n_contributors):
         top_contributors.append(contributors)
     return top_contributors
 
+def get_missing_catalog_info(github_rest_manager: GithubRestManager, repos: list) -> list:
+    missing_catalog_info = []
+    for repo in tqdm(repos):
+        if github_rest_manager.get_file(repo["owner"]["login"], repo["name"], repo["default_branch"], "catalog-info.yaml"):
+            continue
+        missing_catalog_info.append({"repo_name": repo["name"]})
+    return missing_catalog_info
+
 
 @cache_to_file(file_prefix="github_repo_protections")
 def get_repos_protections(

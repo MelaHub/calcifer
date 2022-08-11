@@ -30,6 +30,7 @@ By running `poetry run calcifer` you'll get all the commands you can use. By run
 
 Availabel commands are
 * github: all commands here use unarchived repos
+** backstage-missing: retrieves all repos that do not have a catalog-info.yaml in the main branch
 ** commits-with-tag: retrieves the list of commits across al repos with a specific tag; if you use a release tag this can be used to extract all releases
 ** empty_repos: retrieves all repos with no commits
 ** first-contribution: retrieves for all the people contributing to an org the very first contribution

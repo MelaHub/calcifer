@@ -1,5 +1,6 @@
 import requests
 from requests.auth import HTTPBasicAuth
+from typing import Optional
 from calcifer.services.rest_pager import RestPager
 
 
@@ -33,3 +34,18 @@ class GithubRestManager(RestPager):
             raise Exception(
                 f"Something went wrong while adding branch protection to {github_repo_name}"
             )
+
+    def get_file(
+        self,
+        github_org: str,
+        github_repo_name: str,
+        main_branch: str,
+        file_name: str,
+    ) -> Optional[dict]:
+        response = requests.get(
+            f"https://api.github.com/repos/{github_org}/{github_repo_name}/contents/{file_name}",
+            auth=HTTPBasicAuth(self.user, self.token.get_secret_value()),
+        )
+        if response.status_code == 404:
+            return None
+        return response.content.decode("utf-8")
