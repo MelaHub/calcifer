@@ -31,8 +31,11 @@ class RestPager(BaseModel):
         collection_name: str,
         map_item: Callable[dict, dict] = lambda item: item,
         show_progress: bool = True,
-        stop_if: Callable[dict, bool] = lambda x: False,
+        stop_if: Callable[dict, bool] = None,
     ) -> list:
+
+        if stop_if is None:
+            stop_if = lambda x: False
 
         if self.url in path:
             path = path.replace(self.url, "")
