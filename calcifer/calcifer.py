@@ -99,7 +99,6 @@ def commits_with_tag(
     write_to_file(out_file_path, commits)
 
 
-
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
 @click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
@@ -119,7 +118,9 @@ def empty_repos(
     )
     repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
     commits = get_repos_first_page_commits(github_rest_manager, repos)
-    write_to_file(out_file_path, [commit for commit in commits if commit['commits'] == 0])
+    write_to_file(
+        out_file_path, [commit for commit in commits if commit["commits"] == 0]
+    )
 
 
 @click.command()
@@ -140,7 +141,9 @@ def repos_not_on_main(
         user=github_user, token=github_token, url="https://api.github.com/"
     )
     repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
-    write_to_file(out_file_path, [repo for repo in repos if repo['default_branch'] != "main"])
+    write_to_file(
+        out_file_path, [repo for repo in repos if repo["default_branch"] != "main"]
+    )
 
 
 @click.command()

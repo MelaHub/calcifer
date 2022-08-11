@@ -111,7 +111,9 @@ def get_first_contributions_by_author(contributions: list) -> list:
 def get_first_contributions_by_repo(
     github_rest_manager: GithubRestManager, repo: str
 ) -> list:
-    commits = get_all_commits_for_repo(github_rest_manager, repo, stop_if=_stop_if_after_2021)
+    commits = get_all_commits_for_repo(
+        github_rest_manager, repo, stop_if=_stop_if_after_2021
+    )
     date_commits = [
         {"author": c["commit"]["author"]["name"], "date": c["commit"]["author"]["date"]}
         for c in commits
@@ -130,6 +132,7 @@ def _stop_if_after_2021(commit: dict) -> bool:
         commit["commit"]["author"]["date"], "%Y-%m-%dT%H:%M:%SZ"
     ) < datetime(2021, 1, 1)
 
+
 def get_first_page():
     has_already_been_called_once = False
 
@@ -139,18 +142,27 @@ def get_first_page():
             return True
         has_already_been_called_once = True
         return False
+
     return stop_if_after_first_page
 
+
 @cache_to_file(file_prefix="github_first_page_of_commits")
-def get_repos_first_page_commits(github_rest_manager: GithubRestManager, repos: list) -> list:
+def get_repos_first_page_commits(
+    github_rest_manager: GithubRestManager, repos: list
+) -> list:
     logger.info("Retrieving number of commits")
     commits = []
     for repo in tqdm(repos):
-        repo_commits = get_all_commits_for_repo(github_rest_manager, repo, stop_if=get_first_page())
+        repo_commits = get_all_commits_for_repo(
+            github_rest_manager, repo, stop_if=get_first_page()
+        )
         commits.append({"repo": repo["name"], "commits": len(repo_commits)})
     return commits
 
-def get_all_commits_for_repo(github_rest_manager: GithubRestManager, repo: str, stop_if=None) -> list:
+
+def get_all_commits_for_repo(
+    github_rest_manager: GithubRestManager, repo: str, stop_if=None
+) -> list:
     return github_rest_manager.get_all_pages(
         repo["commits_url"].replace("{/sha}", ""),
         {"sha": repo["default_branch"]},
@@ -158,6 +170,7 @@ def get_all_commits_for_repo(github_rest_manager: GithubRestManager, repo: str, 
         stop_if=stop_if,
         show_progress=False,
     )
+
 
 @cache_to_file(file_prefix="github_top_contributions")
 def get_contributors(github_rest_manager: GithubRestManager, repos: list) -> list:
@@ -212,10 +225,18 @@ def get_top_contributors(contributors, n_contributors):
         top_contributors.append(contributors)
     return top_contributors
 
-def get_missing_catalog_info(github_rest_manager: GithubRestManager, repos: list) -> list:
+
+def get_missing_catalog_info(
+    github_rest_manager: GithubRestManager, repos: list
+) -> list:
     missing_catalog_info = []
     for repo in tqdm(repos):
-        if github_rest_manager.get_file(repo["owner"]["login"], repo["name"], repo["default_branch"], "catalog-info.yaml"):
+        if github_rest_manager.get_file(
+            repo["owner"]["login"],
+            repo["name"],
+            repo["default_branch"],
+            "catalog-info.yaml",
+        ):
             continue
         missing_catalog_info.append({"repo_name": repo["name"]})
     return missing_catalog_info
@@ -239,7 +260,10 @@ def get_protections_by_repo(
     github_rest_manager: GithubRestManager, repo: dict, github_org: str
 ) -> list:
     default_branch = repo["default_branch"]
-    repo_protection_rules = {"repo": repo["full_name"], "visibility": repo["visibility"]}
+    repo_protection_rules = {
+        "repo": repo["full_name"],
+        "visibility": repo["visibility"],
+    }
     protections = github_rest_manager.get_all_pages(
         f'repos/{github_org}/{repo["name"]}/branches/{default_branch}/protection',
         {},
