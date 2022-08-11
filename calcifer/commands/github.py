@@ -291,6 +291,8 @@ def get_repo_protections(repos: list) -> list:
         require_linear_history = repo.get("required_linear_history", {}).get(
             "enabled", False
         )
+        is_protection_missing = True if not repo.get("url") else False
+
 
         protections.append(
             {
@@ -301,12 +303,7 @@ def get_repo_protections(repos: list) -> list:
                 "require_approving_review_count": require_approving_review_count,
                 "allow_force_pushes": allow_force_pushes,
                 "require_linear_history": require_linear_history,
-                "is_protection_missing": not bool(repo),
-                "is_protected_weird": require_linear_history
-                and required_status_check
-                and dismiss_stale_review
-                and require_approving_review_count > 0
-                and not allow_force_pushes,
+                "is_protection_missing": is_protection_missing,
             }
         )
     return protections
