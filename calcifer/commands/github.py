@@ -1,4 +1,4 @@
-from calcifer.services.github_rest_manager import GithubRestManager
+from calcifer.services.github_rest_manager import GithubRestManager, get_default_github_query_param
 from calcifer.utils.cache import cache_to_file
 from calcifer.utils.json_logger import logger
 from tqdm import tqdm
@@ -13,7 +13,7 @@ def get_all_repos(
     print(
         f"Retrieving all not archived repos for org {github_org}, ignoring {ignore_repos}"
     )
-    repos = github_rest_manager.get_all_pages(f"orgs/{github_org}/repos", {}, None)
+    repos = github_rest_manager.get_all_pages(f"orgs/{github_org}/repos", get_default_github_query_param(), None)
     return [r for r in repos if r["name"] not in ignore_repos and not r["archived"]]
 
 
@@ -54,7 +54,7 @@ def get_commits_for_repo_with_tag(
 ) -> list:
     all_commits = github_rest_manager.get_all_pages(
         repo["git_tags_url"].replace("{/sha}", "").replace("/git/tags", "/tags"),
-        {},
+        get_default_github_query_param(),
         None,
         show_progress=False,
     )
@@ -65,7 +65,7 @@ def get_commit_with_sha(
     github_rest_manager: GithubRestManager, repo: str, sha: str
 ) -> list:
     commit_url = repo["commits_url"].replace("{/sha}", f"/{sha}")
-    return github_rest_manager.get_all_pages(commit_url, {}, None, show_progress=False)[
+    return github_rest_manager.get_all_pages(commit_url, get_default_github_query_param(), None, show_progress=False)[
         0
     ]
 
@@ -163,9 +163,11 @@ def get_repos_first_page_commits(
 def get_all_commits_for_repo(
     github_rest_manager: GithubRestManager, repo: str, stop_if=None
 ) -> list:
+    query_params_with_sha = get_default_github_query_param()
+    query_params_with_sha.update({"sha": repo["default_branch"]})
     return github_rest_manager.get_all_pages(
         repo["commits_url"].replace("{/sha}", ""),
-        {"sha": repo["default_branch"]},
+        query_params_with_sha,
         None,
         stop_if=stop_if,
         show_progress=False,
@@ -186,7 +188,7 @@ def get_contributors(github_rest_manager: GithubRestManager, repos: list) -> lis
 def get_contributors_for_repo(github_rest_manager, repo):
     return github_rest_manager.get_all_pages(
         repo["contributors_url"].replace("{/collaborator}", ""),
-        {},
+        get_default_github_query_param(),
         None,
         show_progress=False,
     )
@@ -266,7 +268,7 @@ def get_protections_by_repo(
     }
     protections = github_rest_manager.get_all_pages(
         f'repos/{github_org}/{repo["name"]}/branches/{default_branch}/protection',
-        {},
+        get_default_github_query_param(),
         None,
         show_progress=False,
     )

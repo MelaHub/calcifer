@@ -1,22 +1,23 @@
 import requests
 from requests.auth import HTTPBasicAuth
 from typing import Optional
-from calcifer.services.rest_pager import RestPager
+from calcifer.services.rest_pager import DEFAULT_PAGE_SIZE, QueryParams, RestPager
 
 
-class GithubRestManager(RestPager):
+class GithubQueryParam(QueryParams):
+    page: int
+    per_page: int
+    sha: Optional[str]
 
-    page_param: str = "page"
-    max_results_param: str = "per_page"
+def get_default_github_query_param():
+    return GithubQueryParam(page=1, per_page=DEFAULT_PAGE_SIZE)
 
-    def update_params(self, query_params: dict) -> None:
-        curr_page_params = query_params.get(self.page_param, 0)
-        if curr_page_params:
-            query_params[self.page_param] += 1
-        else:
-            query_params.update(
-                {self.max_results_param: self.page_size, self.page_param: 1}
-            )
+class GithubRestManager(RestPager[GithubQueryParam]):
+
+    def update_params(self, query_params: GithubQueryParam) -> GithubQueryParam:
+        new_params = query_params.copy()
+        new_params['page'] += 1
+        return new_params
 
     def add_protections(
         self,

@@ -1,33 +1,40 @@
+from turtle import pd
 import requests
 from requests.auth import HTTPBasicAuth
 from tqdm import tqdm
 import json
 from pydantic import SecretStr, BaseModel, HttpUrl
-from typing import Callable
+from typing import Callable, TypedDict, Generic,  TypeVar
 from calcifer.utils.json_logger import logger
 
-REPO_PAGE_SIZE = 100
-
+DEFAULT_PAGE_SIZE = 100
 
 class NoResponse(Exception):
     pass
 
 
-class RestPager(BaseModel):
+class QueryParams(TypedDict):
+    pass
+
+
+T = TypeVar('T', bound=QueryParams)
+
+
+class RestPager(BaseModel, Generic[T]):
 
     user: str
     token: SecretStr
     url: HttpUrl
-    page_size: int = REPO_PAGE_SIZE
-    total_param: int = None
+    page_size: int = DEFAULT_PAGE_SIZE
+    total_param: Optional[str] = None
 
-    def update_params(self, query_params: dict) -> None:
+    def update_params(self, query_params: T) -> T:
         raise NotImplementedError
 
     def get_all_pages(
         self,
         path: str,
-        query_params: dict,
+        query_params: T,
         collection_name: str,
         map_item: Callable[dict, dict] = lambda item: item,
         show_progress: bool = True,
@@ -40,7 +47,7 @@ class RestPager(BaseModel):
         if self.url in path:
             path = path.replace(self.url, "")
 
-        def make_request(query_params: dict):
+        def make_request(query_params: T):
             response = requests.get(
                 f"{self.url}{path}",
                 params=query_params,
@@ -58,7 +65,6 @@ class RestPager(BaseModel):
                 raise Exception("Something went wrong while calling the github api")
 
         data = []
-        self.update_params(query_params)
 
         # TODO: refactor the two branches
         if self.total_param:
@@ -71,7 +77,7 @@ class RestPager(BaseModel):
             ):  # TODO: not sure if tdqm is just autocalculating the number of pages or what here
                 curr_res = make_request(query_params)
                 if len(curr_res):
-                    self.update_params(query_params)
+                    query_params = self.update_params(query_params)
                     if type(curr_res) is dict:
                         curr_res = curr_res[collection_name]
                     if stop_if(curr_res[0]):
@@ -95,7 +101,7 @@ class RestPager(BaseModel):
                 if len(curr_res):
                     if stop_if(curr_res[0]):
                         break
-                    self.update_params(query_params)
+                    query_params = self.update_params(query_params)
                     valid_results = [map_item(res) for res in curr_res]
                     data += valid_results
                 else:
