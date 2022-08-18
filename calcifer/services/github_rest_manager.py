@@ -10,12 +10,12 @@ class GithubRestManager(RestPager):
     max_results_param: str = "per_page"
 
     def update_params(self, query_params: dict) -> None:
-        curr_page_params = query_params.get(self.page_param, -1)
-        if curr_page_params > -1:
+        curr_page_params = query_params.get(self.page_param, 0)
+        if curr_page_params:
             query_params[self.page_param] += 1
         else:
             query_params.update(
-                {self.max_results_param: self.page_size, self.page_param: 0}
+                {self.max_results_param: self.page_size, self.page_param: 1}
             )
 
     def add_protections(
