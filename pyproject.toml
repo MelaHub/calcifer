@@ -5,7 +5,7 @@ description = ""
 authors = ["MelaHub <pamela.gotti@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.10"
 requests = "^2.25.1"
 tdqm = "^0.0.1"
 pydantic = "^1.9.1"

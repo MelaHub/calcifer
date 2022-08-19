@@ -1,19 +1,22 @@
-from calcifer.services.rest_pager import RestPager
+from typing import Optional
+from calcifer.services.rest_pager import DEFAULT_PAGE_SIZE, QueryParams, RestPager
+
+
+class JiraQueryParam(QueryParams):
+    maxResults: int
+    startAt: int
+    jql: Optional[str]
+
+
+def get_default_query_param():
+    return JiraQueryParam(maxResults=DEFAULT_PAGE_SIZE, startAt=0)
 
 
 class JiraPager(RestPager):
 
-    start_at_param: str = "startAt"
-    max_results_param: str = "maxResults"
-    total_param: str = "total"
+    total_param: Optional[str] = "total"
 
-    def update_params(self, query_params: dict) -> None:
-        if (
-            query_params.get(self.max_results_param) is not None
-            and query_params.get(self.start_at_param) is not None
-        ):
-            query_params[self.start_at_param] += self.page_size
-        else:
-            query_params.update(
-                {self.max_results_param: self.page_size, self.start_at_param: 0}
-            )
+    def update_params(self, query_params: JiraQueryParam) -> JiraQueryParam:
+        new_params = query_params.copy()
+        new_params["startAt"] += self.page_size
+        return new_params
