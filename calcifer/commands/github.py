@@ -1,4 +1,8 @@
-from calcifer.services.github_rest_manager import GithubRestManager, get_default_github_query_param
+from typing import TypedDict
+from calcifer.services.github_rest_manager import (
+    GithubRestManager,
+    get_default_github_query_param,
+)
 from calcifer.utils.cache import cache_to_file
 from calcifer.utils.json_logger import logger
 from tqdm import tqdm
@@ -13,7 +17,9 @@ def get_all_repos(
     print(
         f"Retrieving all not archived repos for org {github_org}, ignoring {ignore_repos}"
     )
-    repos = github_rest_manager.get_all_pages(f"orgs/{github_org}/repos", get_default_github_query_param(), None)
+    repos = github_rest_manager.get_all_pages(
+        f"orgs/{github_org}/repos", get_default_github_query_param(), None
+    )
     return [r for r in repos if r["name"] not in ignore_repos and not r["archived"]]
 
 
@@ -65,9 +71,9 @@ def get_commit_with_sha(
     github_rest_manager: GithubRestManager, repo: str, sha: str
 ) -> list:
     commit_url = repo["commits_url"].replace("{/sha}", f"/{sha}")
-    return github_rest_manager.get_all_pages(commit_url, get_default_github_query_param(), None, show_progress=False)[
-        0
-    ]
+    return github_rest_manager.get_all_pages(
+        commit_url, get_default_github_query_param(), None, show_progress=False
+    )[0]
 
 
 @cache_to_file(file_prefix="github_first_contribution")
@@ -294,7 +300,6 @@ def get_repo_protections(repos: list) -> list:
             "enabled", False
         )
         is_protection_missing = True if not repo.get("url") else False
-
 
         protections.append(
             {

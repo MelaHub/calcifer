@@ -4,10 +4,11 @@ from requests.auth import HTTPBasicAuth
 from tqdm import tqdm
 import json
 from pydantic import SecretStr, BaseModel, HttpUrl
-from typing import Callable, TypedDict, Generic,  TypeVar
+from typing import Callable, TypedDict, Generic, TypeVar
 from calcifer.utils.json_logger import logger
 
 DEFAULT_PAGE_SIZE = 100
+
 
 class NoResponse(Exception):
     pass
@@ -17,7 +18,7 @@ class QueryParams(TypedDict):
     pass
 
 
-T = TypeVar('T', bound=QueryParams)
+T = TypeVar("T", bound=QueryParams)
 
 
 class RestPager(BaseModel, Generic[T]):

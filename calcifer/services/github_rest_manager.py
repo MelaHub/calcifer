@@ -9,14 +9,15 @@ class GithubQueryParam(QueryParams):
     per_page: int
     sha: Optional[str]
 
+
 def get_default_github_query_param():
     return GithubQueryParam(page=1, per_page=DEFAULT_PAGE_SIZE)
 
-class GithubRestManager(RestPager[GithubQueryParam]):
 
+class GithubRestManager(RestPager[GithubQueryParam]):
     def update_params(self, query_params: GithubQueryParam) -> GithubQueryParam:
         new_params = query_params.copy()
-        new_params['page'] += 1
+        new_params["page"] += 1
         return new_params
 
     def add_protections(

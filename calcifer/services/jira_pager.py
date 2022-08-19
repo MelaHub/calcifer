@@ -14,5 +14,5 @@ class JiraPager(RestPager):
 
     def update_params(self, query_params: JiraQueryParam) -> JiraQueryParam:
         new_params = query_params.copy()
-        new_params['startAt'] += self.page_size
+        new_params["startAt"] += self.page_size
         return new_params

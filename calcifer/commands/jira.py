@@ -16,7 +16,9 @@ def get_issues_for_project(
     jql_query = f"project={jira_project} AND createdDate > {since}"
     logger.info(f"Retrieving Jira issues with jql {jql_query}")
     issues = jira_pager.get_all_pages(
-        "/rest/api/3/search", JiraQueryParam(maxResults=DEFAULT_PAGE_SIZE, startAt=0, jql=jql_query), "issues"
+        "/rest/api/3/search",
+        JiraQueryParam(maxResults=DEFAULT_PAGE_SIZE, startAt=0, jql=jql_query),
+        "issues",
     )
     return issues
 
@@ -27,7 +29,10 @@ def get_issues_change_logs(jira_pager: JiraPager, issues: json) -> list:
 
     for i in tqdm(issues):
         change_log = jira_pager.get_all_pages(
-            f'/rest/api/3/issue/{i["key"]}/changelog', JiraQueryParam(maxResults=DEFAULT_PAGE_SIZE, startAt=0), "values", show_progress=False
+            f'/rest/api/3/issue/{i["key"]}/changelog',
+            JiraQueryParam(maxResults=DEFAULT_PAGE_SIZE, startAt=0),
+            "values",
+            show_progress=False,
         )
         for log in change_log:
             for field in log["items"]:
