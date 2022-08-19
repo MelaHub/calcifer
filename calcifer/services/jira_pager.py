@@ -8,6 +8,10 @@ class JiraQueryParam(QueryParams):
     jql: Optional[str]
 
 
+def get_default_query_param():
+    return JiraQueryParam(maxResults=DEFAULT_PAGE_SIZE, startAt=0)
+
+
 class JiraPager(RestPager):
 
     total_param: Optional[str] = "total"
