@@ -1,10 +1,9 @@
-from turtle import pd
 import requests
 from requests.auth import HTTPBasicAuth
 from tqdm import tqdm
 import json
 from pydantic import SecretStr, BaseModel, HttpUrl
-from typing import Callable, TypedDict, Generic, TypeVar
+from typing import Callable, TypedDict, Generic, TypeVar, Optional
 from calcifer.utils.json_logger import logger
 
 DEFAULT_PAGE_SIZE = 100

@@ -32,8 +32,9 @@ Availabel commands are
 * github: all commands here use unarchived repos
 ** backstage-missing: retrieves all repos that do not have a catalog-info.yaml in the main branch
 ** commits-with-tag: retrieves the list of commits across al repos with a specific tag; if you use a release tag this can be used to extract all releases
-** empty_repos: retrieves all repos with no commits
+** empty-repos: retrieves all repos with no commits
 ** first-contribution: retrieves for all the people contributing to an org the very first contribution
+** repos-info: for each repos retrieves whether there's no catalog-info.yaml for backstage, if it is an empty repo, if there are missing protection
 ** top-contributors: retrieves the top contributors for each repo in an org
 ** unprotected-repos: retrieves all repos not protected in an org
 * jira

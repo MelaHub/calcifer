@@ -8,12 +8,65 @@ from calcifer.utils.json_logger import logger
 from tqdm import tqdm
 from datetime import datetime
 import itertools
+from pydantic import HttpUrl
+
+
+class RepoOwner(TypedDict):
+    login: str
+
+
+class RequiredStatusCheck(TypedDict):
+    strict: bool
+
+
+class RequiredPullRequestReviews(TypedDict):
+    required_approving_review_count: int
+    dismiss_stale_reviews: bool
+
+
+class AllowForcePushes(TypedDict):
+    enabled: bool
+
+
+class RequireLinearHistory(TypedDict):
+    enabled: bool
+
+
+class Repo(TypedDict):
+    name: str
+    full_name: str
+    private: bool
+    archived: bool
+    default_branch: str
+    git_tags_url: HttpUrl
+    commits_url: HttpUrl
+    visibility: bool
+    owner: RepoOwner
+
+
+class RepoProtection(TypedDict):
+    required_status_checks: RequiredStatusCheck
+    required_pull_request_reviews: RequiredPullRequestReviews
+    allow_force_pushes: AllowForcePushes
+    require_linear_history: RequireLinearHistory
+    url: HttpUrl
+
+
+class RepoProtectionInfo(TypedDict):
+    name: str
+    visibility: bool
+    required_status_checks: bool
+    dismiss_stale_review: bool
+    require_approving_review_count: int
+    allow_force_pushes: bool
+    require_linear_history: bool
+    is_protection_missing: bool
 
 
 @cache_to_file(file_prefix="github_repos")
 def get_all_repos(
-    github_rest_manager: GithubRestManager, ignore_repos: list, github_org: str
-) -> list:
+    github_rest_manager: GithubRestManager, ignore_repos: list[str], github_org: str
+) -> list[Repo]:
     print(
         f"Retrieving all not archived repos for org {github_org}, ignoring {ignore_repos}"
     )
@@ -25,7 +78,7 @@ def get_all_repos(
 
 @cache_to_file(file_prefix="github_release_commits")
 def get_commits_with_tag(
-    github_rest_manager: GithubRestManager, repos: list, tag: str
+    github_rest_manager: GithubRestManager, repos: list[Repo], tag: str
 ) -> list:
     print(f"Retrieving all commits with tag {tag}")
     commits = []
@@ -35,7 +88,7 @@ def get_commits_with_tag(
 
 
 def get_repo_commits_with_tag(
-    github_rest_manager: GithubRestManager, repo: str, tag: str
+    github_rest_manager: GithubRestManager, repo: Repo, tag: str
 ) -> list:
     commits_with_tag = get_commits_for_repo_with_tag(github_rest_manager, repo, tag)
     commits_with_tag_details = []
@@ -56,7 +109,7 @@ def get_repo_commits_with_tag(
 
 
 def get_commits_for_repo_with_tag(
-    github_rest_manager: GithubRestManager, repo: str, tag: str
+    github_rest_manager: GithubRestManager, repo: Repo, tag: str
 ) -> list:
     all_commits = github_rest_manager.get_all_pages(
         repo["git_tags_url"].replace("{/sha}", "").replace("/git/tags", "/tags"),
@@ -68,7 +121,7 @@ def get_commits_for_repo_with_tag(
 
 
 def get_commit_with_sha(
-    github_rest_manager: GithubRestManager, repo: str, sha: str
+    github_rest_manager: GithubRestManager, repo: Repo, sha: str
 ) -> list:
     commit_url = repo["commits_url"].replace("{/sha}", f"/{sha}")
     return github_rest_manager.get_all_pages(
@@ -152,22 +205,27 @@ def get_first_page():
     return stop_if_after_first_page
 
 
+class RepoCommits(TypedDict):
+    name: str
+    commits: int
+
+
 @cache_to_file(file_prefix="github_first_page_of_commits")
 def get_repos_first_page_commits(
-    github_rest_manager: GithubRestManager, repos: list
-) -> list:
+    github_rest_manager: GithubRestManager, repos: list[Repo]
+) -> list[RepoCommits]:
     logger.info("Retrieving number of commits")
     commits = []
     for repo in tqdm(repos):
         repo_commits = get_all_commits_for_repo(
             github_rest_manager, repo, stop_if=get_first_page()
         )
-        commits.append({"repo": repo["name"], "commits": len(repo_commits)})
+        commits.append({"name": repo["name"], "commits": len(repo_commits)})
     return commits
 
 
 def get_all_commits_for_repo(
-    github_rest_manager: GithubRestManager, repo: str, stop_if=None
+    github_rest_manager: GithubRestManager, repo: Repo, stop_if=None
 ) -> list:
     query_params_with_sha = get_default_github_query_param()
     query_params_with_sha.update({"sha": repo["default_branch"]})
@@ -191,7 +249,9 @@ def get_contributors(github_rest_manager: GithubRestManager, repos: list) -> lis
     return all_contributors
 
 
-def get_contributors_for_repo(github_rest_manager, repo):
+def get_contributors_for_repo(
+    github_rest_manager: GithubRestManager, repo: list
+) -> list:
     return github_rest_manager.get_all_pages(
         repo["contributors_url"].replace("{/collaborator}", ""),
         get_default_github_query_param(),
@@ -235,8 +295,8 @@ def get_top_contributors(contributors, n_contributors):
 
 
 def get_missing_catalog_info(
-    github_rest_manager: GithubRestManager, repos: list
-) -> list:
+    github_rest_manager: GithubRestManager, repos: list[Repo]
+) -> list[Repo]:
     missing_catalog_info = []
     for repo in tqdm(repos):
         if github_rest_manager.get_file(
@@ -246,14 +306,14 @@ def get_missing_catalog_info(
             "catalog-info.yaml",
         ):
             continue
-        missing_catalog_info.append({"repo_name": repo["name"]})
+        missing_catalog_info.append(repo)
     return missing_catalog_info
 
 
 @cache_to_file(file_prefix="github_repo_protections")
 def get_repos_protections(
-    github_rest_manager: GithubRestManager, repos: list, github_org: str
-) -> list:
+    github_rest_manager: GithubRestManager, repos: list[Repo], github_org: str
+) -> list[RepoProtection]:
     print("Retrieving repo protections")
     protections = []
     for repo in tqdm(repos):
@@ -269,7 +329,7 @@ def get_protections_by_repo(
 ) -> list:
     default_branch = repo["default_branch"]
     repo_protection_rules = {
-        "repo": repo["full_name"],
+        "repo": repo["name"],
         "visibility": repo["visibility"],
     }
     protections = github_rest_manager.get_all_pages(
@@ -283,7 +343,7 @@ def get_protections_by_repo(
     return repo_protection_rules
 
 
-def get_repo_protections(repos: list) -> list:
+def get_repo_protections_info(repos: list[RepoProtection]) -> list[RepoProtectionInfo]:
     protections = []
     for repo in repos:
         required_status_check = repo.get("required_status_checks", {}).get(
@@ -303,7 +363,7 @@ def get_repo_protections(repos: list) -> list:
 
         protections.append(
             {
-                "repo": repo["repo"],
+                "name": repo["repo"],
                 "visibility": repo["visibility"],
                 "required_status_checks": required_status_check,
                 "dismiss_stale_review": dismiss_stale_review,
