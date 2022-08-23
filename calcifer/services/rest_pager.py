@@ -39,7 +39,7 @@ class RestPager(BaseModel, Generic[T]):
         map_item: Callable[dict, dict] = lambda item: item,
         show_progress: bool = True,
         stop_if: Callable[dict, bool] = None,
-    ) -> list:
+    ) -> list[dict]:
 
         if stop_if is None:
             stop_if = lambda x: False

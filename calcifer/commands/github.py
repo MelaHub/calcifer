@@ -302,7 +302,6 @@ def get_missing_catalog_info(
         if github_rest_manager.get_file(
             repo["owner"]["login"],
             repo["name"],
-            repo["default_branch"],
             "catalog-info.yaml",
         ):
             continue
