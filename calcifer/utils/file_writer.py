@@ -3,7 +3,7 @@ from csv import DictWriter
 from calcifer.utils.json_logger import logger
 
 
-def write_to_file(file_name: Path, data: list):
+def write_to_file(file_name: Path, data: list[dict]):
     logger.info(f"Saving output to {file_name}")
     with open(file_name, "w") as csvfile:
         writer = DictWriter(csvfile, fieldnames=data[0].keys())

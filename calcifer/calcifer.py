@@ -38,7 +38,7 @@ def top_contributors(
     github_user: str,
     github_token: SecretStr,
     github_org: str,
-    out_file_path: str,
+    out_file_path: Path,
     n_contrib: int,
     ignore_repos: list[str],
 ):
@@ -63,7 +63,7 @@ def first_contribution(
     github_token: SecretStr,
     github_org: str,
     out_file_path: Path,
-    ignore_repos: list,
+    ignore_repos: list[str],
 ):
     """Retrieves the very first contribution for all repos in an org."""
     github_rest_manager = GithubRestManager(
