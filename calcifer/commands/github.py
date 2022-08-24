@@ -1,5 +1,16 @@
-from typing import Callable, TypedDict
-from calcifer.models.github import Repo, FlattenCommit, Tag, Contributor, ContributorWithRepo, CommitDetails, AuthorContribution, RepoProtection, RepoProtectionInfo, RepoCommits
+from typing import Callable
+from calcifer.models.github import (
+    Repo,
+    FlattenCommit,
+    Tag,
+    Contributor,
+    ContributorWithRepo,
+    CommitDetails,
+    AuthorContribution,
+    RepoProtection,
+    RepoProtectionInfo,
+    RepoCommits,
+)
 from calcifer.services.github_rest_manager import (
     GithubRestManager,
     get_default_github_query_param,
@@ -45,13 +56,13 @@ def get_repo_commits_with_tag(
             github_rest_manager, repo, commit["commit"]["sha"]
         )
         commits_with_tag_details.append(
-            {
-                "repo": repo["name"],
-                "tag": commit["name"],
-                "author": commit_details["commit"]["author"]["name"],
-                "message": commit_details["commit"]["message"].replace("\n", "; "),
-                "date": commit_details["commit"]["author"]["date"],
-            }
+            FlattenCommit(
+                repo=repo["name"],
+                tag=commit["name"],
+                author=commit_details["commit"]["author"]["name"],
+                message=commit_details["commit"]["message"].replace("\n", "; "),
+                date=commit_details["commit"]["author"]["date"],
+            )
         )
     return commits_with_tag_details
 
@@ -92,7 +103,9 @@ def get_first_contributions(
     return contributions
 
 
-def get_first_contributions_by_author(contributions: list[dict[str, AuthorContribution]]) -> list[AuthorContribution]:
+def get_first_contributions_by_author(
+    contributions: list[dict[str, AuthorContribution]]
+) -> list[AuthorContribution]:
     first_contributions = {}
     now = datetime.now().isoformat()
     for contribution in contributions:
@@ -109,9 +122,7 @@ def get_first_contributions_by_author(contributions: list[dict[str, AuthorContri
                     "date": contribution[author]["date"],
                     "repo": contribution[author]["repo"],
                 }
-    return [
-        contrib for contrib in first_contributions.values()
-    ]
+    return [contrib for contrib in first_contributions.values()]
 
 
 def get_first_contributions_by_repo(
@@ -157,32 +168,65 @@ def get_first_page() -> Callable[dict, bool]:
 def get_repos_first_page_commits(
     github_rest_manager: GithubRestManager, repos: list[Repo]
 ) -> list[RepoCommits]:
-    logger.info("Retrieving number of commits")
     commits = []
     for repo in tqdm(repos):
         repo_commits = get_all_commits_for_repo(
             github_rest_manager, repo, stop_if=get_first_page()
         )
-        commits.append({"name": repo["name"], "commits": len(repo_commits)})
+        commits += repo_commits
     return commits
+
+
+def get_last_commit(
+    github_rest_manager: GithubRestManager, repos: list[Repo]
+) -> list[FlattenCommit]:
+    logger.info("Retrieving last commit")
+    repo_commits = get_repos_first_page_commits(github_rest_manager, repos)
+    last_commits = []
+    for _, commits in itertools.groupby(repo_commits, lambda x: x["repo"]):
+        last_commits.append(sorted(commits, key=lambda x: x["date"])[-1])
+    return last_commits
+
+
+def get_repo_commit_number(
+    github_rest_manager: GithubRestManager, repos: list[Repo]
+) -> list[RepoCommits]:
+    logger.info("Retrieving number of commits")
+    repo_commits = get_repos_first_page_commits(github_rest_manager, repos)
+    commits_num = []
+    for repo_name, commits in itertools.groupby(repo_commits, lambda x: x["repo"]):
+        commits_num.append({"name": repo_name, "commits": len([c for c in commits])})
+    return commits_num
 
 
 def get_all_commits_for_repo(
     github_rest_manager: GithubRestManager, repo: Repo, stop_if=None
-) -> list[CommitDetails]:
+) -> list[FlattenCommit]:
     query_params_with_sha = get_default_github_query_param()
     query_params_with_sha.update({"sha": repo["default_branch"]})
-    return github_rest_manager.get_all_pages(
+    commits = github_rest_manager.get_all_pages(
         repo["commits_url"].replace("{/sha}", ""),
         query_params_with_sha,
         None,
         stop_if=stop_if,
         show_progress=False,
     )
+    return [
+        FlattenCommit(
+            repo=repo["name"],
+            tag=commit["sha"],
+            author=commit["commit"]["author"]["name"],
+            message=commit["commit"]["message"].replace("\n", "; "),
+            date=commit["commit"]["author"]["date"],
+        )
+        for commit in commits
+    ]
 
 
 @cache_to_file(file_prefix="github_top_contributions")
-def get_contributors(github_rest_manager: GithubRestManager, repos: list[Repo]) -> list[ContributorWithRepo]:
+def get_contributors(
+    github_rest_manager: GithubRestManager, repos: list[Repo]
+) -> list[ContributorWithRepo]:
     all_contributors = []
     for repo in tqdm(repos):
         repo_contributors = get_contributors_for_repo(github_rest_manager, repo)
@@ -203,7 +247,9 @@ def get_contributors_for_repo(
     )
 
 
-def get_top_contributors(contributors: list[ContributorWithRepo], n_contributors: int) -> dict:
+def get_top_contributors(
+    contributors: list[ContributorWithRepo], n_contributors: int
+) -> dict:
     top_contributors = []
     for repo, contributions in itertools.groupby(contributors, lambda x: x["repo"]):
         contributors = {}
@@ -319,7 +365,9 @@ def get_repo_protections_info(repos: list[RepoProtection]) -> list[RepoProtectio
 
 
 def add_protection_to_repo_if_missing(
-    github_rest_manager: GithubRestManager, repo_protections: list[RepoProtectionInfo], github_org: str
+    github_rest_manager: GithubRestManager,
+    repo_protections: list[RepoProtectionInfo],
+    github_org: str,
 ) -> None:
     unprotected_repos = [
         repo for repo in repo_protections if repo["is_protection_missing"]
