@@ -8,7 +8,7 @@ class JiraQueryParam(QueryParams):
     jql: Optional[str]
 
 
-def get_default_query_param():
+def get_default_query_param() -> JiraQueryParam:
     return JiraQueryParam(maxResults=DEFAULT_PAGE_SIZE, startAt=0)
 
 

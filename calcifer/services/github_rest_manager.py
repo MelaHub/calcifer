@@ -10,7 +10,7 @@ class GithubQueryParam(QueryParams):
     sha: Optional[str]
 
 
-def get_default_github_query_param():
+def get_default_github_query_param() -> GithubQueryParam:
     return GithubQueryParam(page=1, per_page=DEFAULT_PAGE_SIZE)
 
 
@@ -41,7 +41,6 @@ class GithubRestManager(RestPager[GithubQueryParam]):
         self,
         github_org: str,
         github_repo_name: str,
-        main_branch: str,
         file_name: str,
     ) -> Optional[dict]:
         response = requests.get(
