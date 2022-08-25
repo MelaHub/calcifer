@@ -1,4 +1,16 @@
-from typing import TypedDict
+from typing import Callable
+from calcifer.models.github import (
+    Repo,
+    FlattenCommit,
+    Tag,
+    Contributor,
+    ContributorWithRepo,
+    CommitDetails,
+    AuthorContribution,
+    RepoProtection,
+    RepoProtectionInfo,
+    RepoCommits,
+)
 from calcifer.services.github_rest_manager import (
     GithubRestManager,
     get_default_github_query_param,
@@ -8,59 +20,6 @@ from calcifer.utils.json_logger import logger
 from tqdm import tqdm
 from datetime import datetime
 import itertools
-from pydantic import HttpUrl
-
-
-class RepoOwner(TypedDict):
-    login: str
-
-
-class RequiredStatusCheck(TypedDict):
-    strict: bool
-
-
-class RequiredPullRequestReviews(TypedDict):
-    required_approving_review_count: int
-    dismiss_stale_reviews: bool
-
-
-class AllowForcePushes(TypedDict):
-    enabled: bool
-
-
-class RequireLinearHistory(TypedDict):
-    enabled: bool
-
-
-class Repo(TypedDict):
-    name: str
-    full_name: str
-    private: bool
-    archived: bool
-    default_branch: str
-    git_tags_url: HttpUrl
-    commits_url: HttpUrl
-    visibility: bool
-    owner: RepoOwner
-
-
-class RepoProtection(TypedDict):
-    required_status_checks: RequiredStatusCheck
-    required_pull_request_reviews: RequiredPullRequestReviews
-    allow_force_pushes: AllowForcePushes
-    require_linear_history: RequireLinearHistory
-    url: HttpUrl
-
-
-class RepoProtectionInfo(TypedDict):
-    name: str
-    visibility: bool
-    required_status_checks: bool
-    dismiss_stale_review: bool
-    require_approving_review_count: int
-    allow_force_pushes: bool
-    require_linear_history: bool
-    is_protection_missing: bool
 
 
 @cache_to_file(file_prefix="github_repos")
@@ -79,7 +38,7 @@ def get_all_repos(
 @cache_to_file(file_prefix="github_release_commits")
 def get_commits_with_tag(
     github_rest_manager: GithubRestManager, repos: list[Repo], tag: str
-) -> list:
+) -> list[FlattenCommit]:
     print(f"Retrieving all commits with tag {tag}")
     commits = []
     for repo in tqdm(repos):
@@ -89,7 +48,7 @@ def get_commits_with_tag(
 
 def get_repo_commits_with_tag(
     github_rest_manager: GithubRestManager, repo: Repo, tag: str
-) -> list:
+) -> list[FlattenCommit]:
     commits_with_tag = get_commits_for_repo_with_tag(github_rest_manager, repo, tag)
     commits_with_tag_details = []
     for commit in commits_with_tag:
@@ -97,20 +56,20 @@ def get_repo_commits_with_tag(
             github_rest_manager, repo, commit["commit"]["sha"]
         )
         commits_with_tag_details.append(
-            {
-                "repo": repo["name"],
-                "tag": commit["name"],
-                "author": commit_details["commit"]["author"]["name"],
-                "message": commit_details["commit"]["message"].replace("\n", "; "),
-                "date": commit_details["commit"]["author"]["date"],
-            }
+            FlattenCommit(
+                repo=repo["name"],
+                tag=commit["name"],
+                author=commit_details["commit"]["author"]["name"],
+                message=commit_details["commit"]["message"].replace("\n", "; "),
+                date=commit_details["commit"]["author"]["date"],
+            )
         )
     return commits_with_tag_details
 
 
 def get_commits_for_repo_with_tag(
     github_rest_manager: GithubRestManager, repo: Repo, tag: str
-) -> list:
+) -> list[Tag]:
     all_commits = github_rest_manager.get_all_pages(
         repo["git_tags_url"].replace("{/sha}", "").replace("/git/tags", "/tags"),
         get_default_github_query_param(),
@@ -122,7 +81,7 @@ def get_commits_for_repo_with_tag(
 
 def get_commit_with_sha(
     github_rest_manager: GithubRestManager, repo: Repo, sha: str
-) -> list:
+) -> list[CommitDetails]:
     commit_url = repo["commits_url"].replace("{/sha}", f"/{sha}")
     return github_rest_manager.get_all_pages(
         commit_url, get_default_github_query_param(), None, show_progress=False
@@ -132,7 +91,7 @@ def get_commit_with_sha(
 @cache_to_file(file_prefix="github_first_contribution")
 def get_first_contributions(
     github_rest_manager: GithubRestManager, repos: list
-) -> list:
+) -> list[dict[str, AuthorContribution]]:
     print("Retrieving first contributions")
     contributions = []
     for repo in tqdm(repos):
@@ -144,7 +103,9 @@ def get_first_contributions(
     return contributions
 
 
-def get_first_contributions_by_author(contributions: list) -> list:
+def get_first_contributions_by_author(
+    contributions: list[dict[str, AuthorContribution]]
+) -> list[AuthorContribution]:
     first_contributions = {}
     now = datetime.now().isoformat()
     for contribution in contributions:
@@ -161,15 +122,12 @@ def get_first_contributions_by_author(contributions: list) -> list:
                     "date": contribution[author]["date"],
                     "repo": contribution[author]["repo"],
                 }
-    return [
-        {"author": author, "date": contrib["date"], "repo": contrib["repo"]}
-        for author, contrib in first_contributions.items()
-    ]
+    return [contrib for contrib in first_contributions.values()]
 
 
 def get_first_contributions_by_repo(
     github_rest_manager: GithubRestManager, repo: str
-) -> list:
+) -> dict[str, AuthorContribution]:
     commits = get_all_commits_for_repo(
         github_rest_manager, repo, stop_if=_stop_if_after_2021
     )
@@ -179,6 +137,7 @@ def get_first_contributions_by_repo(
     ]
     return {
         author: {
+            "author": author,
             "date": min(commit["date"] for commit in commits),
             "repo": repo["name"],
         }
@@ -186,13 +145,13 @@ def get_first_contributions_by_repo(
     }
 
 
-def _stop_if_after_2021(commit: dict) -> bool:
+def _stop_if_after_2021(commit: CommitDetails) -> bool:
     return datetime.strptime(
         commit["commit"]["author"]["date"], "%Y-%m-%dT%H:%M:%SZ"
     ) < datetime(2021, 1, 1)
 
 
-def get_first_page():
+def get_first_page() -> Callable[dict, bool]:
     has_already_been_called_once = False
 
     def stop_if_after_first_page(page: dict) -> bool:
@@ -205,41 +164,69 @@ def get_first_page():
     return stop_if_after_first_page
 
 
-class RepoCommits(TypedDict):
-    name: str
-    commits: int
-
-
 @cache_to_file(file_prefix="github_first_page_of_commits")
 def get_repos_first_page_commits(
     github_rest_manager: GithubRestManager, repos: list[Repo]
 ) -> list[RepoCommits]:
-    logger.info("Retrieving number of commits")
     commits = []
     for repo in tqdm(repos):
         repo_commits = get_all_commits_for_repo(
             github_rest_manager, repo, stop_if=get_first_page()
         )
-        commits.append({"name": repo["name"], "commits": len(repo_commits)})
+        commits += repo_commits
     return commits
+
+
+def get_last_commit(
+    github_rest_manager: GithubRestManager, repos: list[Repo]
+) -> list[FlattenCommit]:
+    logger.info("Retrieving last commit")
+    repo_commits = get_repos_first_page_commits(github_rest_manager, repos)
+    last_commits = []
+    for _, commits in itertools.groupby(repo_commits, lambda x: x["repo"]):
+        last_commits.append(sorted(commits, key=lambda x: x["date"])[-1])
+    return last_commits
+
+
+def get_repo_commit_number(
+    github_rest_manager: GithubRestManager, repos: list[Repo]
+) -> list[RepoCommits]:
+    logger.info("Retrieving number of commits")
+    repo_commits = get_repos_first_page_commits(github_rest_manager, repos)
+    commits_num = []
+    for repo_name, commits in itertools.groupby(repo_commits, lambda x: x["repo"]):
+        commits_num.append({"name": repo_name, "commits": len([c for c in commits])})
+    return commits_num
 
 
 def get_all_commits_for_repo(
     github_rest_manager: GithubRestManager, repo: Repo, stop_if=None
-) -> list:
+) -> list[FlattenCommit]:
     query_params_with_sha = get_default_github_query_param()
     query_params_with_sha.update({"sha": repo["default_branch"]})
-    return github_rest_manager.get_all_pages(
+    commits = github_rest_manager.get_all_pages(
         repo["commits_url"].replace("{/sha}", ""),
         query_params_with_sha,
         None,
         stop_if=stop_if,
         show_progress=False,
     )
+    return [
+        FlattenCommit(
+            repo=repo["name"],
+            tag=commit["sha"],
+            author=commit["commit"]["author"]["name"],
+            message=commit["commit"]["message"].replace("\n", "; "),
+            date=commit["commit"]["author"]["date"],
+        )
+        for commit in commits
+    ]
 
 
 @cache_to_file(file_prefix="github_top_contributions")
-def get_contributors(github_rest_manager: GithubRestManager, repos: list) -> list:
+def get_contributors(
+    github_rest_manager: GithubRestManager, repos: list[Repo]
+) -> list[ContributorWithRepo]:
     all_contributors = []
     for repo in tqdm(repos):
         repo_contributors = get_contributors_for_repo(github_rest_manager, repo)
@@ -250,8 +237,8 @@ def get_contributors(github_rest_manager: GithubRestManager, repos: list) -> lis
 
 
 def get_contributors_for_repo(
-    github_rest_manager: GithubRestManager, repo: list
-) -> list:
+    github_rest_manager: GithubRestManager, repo: list[Repo]
+) -> list[Contributor]:
     return github_rest_manager.get_all_pages(
         repo["contributors_url"].replace("{/collaborator}", ""),
         get_default_github_query_param(),
@@ -260,7 +247,9 @@ def get_contributors_for_repo(
     )
 
 
-def get_top_contributors(contributors, n_contributors):
+def get_top_contributors(
+    contributors: list[ContributorWithRepo], n_contributors: int
+) -> dict:
     top_contributors = []
     for repo, contributions in itertools.groupby(contributors, lambda x: x["repo"]):
         contributors = {}
@@ -312,7 +301,7 @@ def get_missing_catalog_info(
 @cache_to_file(file_prefix="github_repo_protections")
 def get_repos_protections(
     github_rest_manager: GithubRestManager, repos: list[Repo], github_org: str
-) -> list[RepoProtection]:
+) -> list[RepoProtectionInfo]:
     print("Retrieving repo protections")
     protections = []
     for repo in tqdm(repos):
@@ -324,8 +313,8 @@ def get_repos_protections(
 
 
 def get_protections_by_repo(
-    github_rest_manager: GithubRestManager, repo: dict, github_org: str
-) -> list:
+    github_rest_manager: GithubRestManager, repo: Repo, github_org: str
+) -> list[RepoProtectionInfo]:
     default_branch = repo["default_branch"]
     repo_protection_rules = {
         "repo": repo["name"],
@@ -376,8 +365,10 @@ def get_repo_protections_info(repos: list[RepoProtection]) -> list[RepoProtectio
 
 
 def add_protection_to_repo_if_missing(
-    github_rest_manager: GithubRestManager, repo_protections: list, github_org: str
-):
+    github_rest_manager: GithubRestManager,
+    repo_protections: list[RepoProtectionInfo],
+    github_org: str,
+) -> None:
     unprotected_repos = [
         repo for repo in repo_protections if repo["is_protection_missing"]
     ]

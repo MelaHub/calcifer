@@ -21,9 +21,10 @@ from calcifer.commands.github import (
     get_first_contributions,
     get_repo_protections_info,
     get_missing_catalog_info,
-    get_repos_first_page_commits,
+    get_repo_commit_number,
     get_repos_protections,
     get_top_contributors,
+    get_last_commit,
 )
 
 
@@ -104,7 +105,7 @@ def commits_with_tag(
 def __get_empty_repos(
     github_rest_manager: GithubRestManager, repos: list[Repo]
 ) -> list[str]:
-    commits = get_repos_first_page_commits(github_rest_manager, repos)
+    commits = get_repo_commit_number(github_rest_manager, repos)
     return [commit["name"] for commit in commits if commit["commits"] == 0]
 
 
@@ -231,6 +232,27 @@ def unprotected_repos(
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
+def repo_last_commit(
+    github_user: str,
+    github_token: SecretStr,
+    github_org: str,
+    out_file_path: Path,
+    ignore_repos: list[str],
+):
+    github_rest_manager = GithubRestManager(
+        user=github_user, token=github_token, url="https://api.github.com/"
+    )
+    repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
+    last_commits = get_last_commit(github_rest_manager, repos)
+    write_to_file(out_file_path, last_commits)
+
+
+@click.command()
+@click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-org", type=str, required=True)
+@click.option("--out-file-path", type=str, required=True)
+@click.option("--ignore-repos", "-i", type=str, multiple=True)
 def repos_info(
     github_user: str,
     github_token: SecretStr,
@@ -252,6 +274,9 @@ def repos_info(
         repo["name"]: repo
         for repo in __get_repo_protection_info(github_rest_manager, repos, github_org)
     }
+    last_commits = {
+        commit["repo"]: commit for commit in get_last_commit(github_rest_manager, repos)
+    }
 
     repos_info = []
     for repo in repos:
@@ -268,6 +293,7 @@ def repos_info(
         if repo["name"] in repos_with_missing_backstage:
             repo_info["is_backstage_missing"] = True
         repo_info.update(repos_protection_info.get(repo["name"], {}))
+        repo_info.update(last_commits.get(repo["name"], {}))
         repos_info.append(repo_info)
 
     write_to_file(out_file_path, repos_info)
@@ -372,6 +398,7 @@ cli.add_command(empty_repos)
 cli.add_command(repos_not_on_main)
 cli.add_command(backstage_missing)
 cli.add_command(repos_info)
+cli.add_command(repo_last_commit)
 
 # Jira commands
 cli.add_command(issues_with_comments_by)
