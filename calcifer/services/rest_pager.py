@@ -1,5 +1,5 @@
 import requests
-from requests.auth import HTTPBasicAuth
+from requests.auth import HTTPBasicAuth, AuthBase
 from tqdm import tqdm
 import json
 from pydantic import SecretStr, BaseModel, HttpUrl
@@ -20,13 +20,33 @@ class QueryParams(TypedDict):
 T = TypeVar("T", bound=QueryParams)
 
 
+class HTTPBearer(AuthBase):
+    """Attaches HTTP Bearer to the given Request object."""
+
+    def __init__(self, bearer):
+        self.bearer = bearer
+
+    def __eq__(self, other):
+        return self.bearer == getattr(other, "bearer", None)
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __call__(self, r):
+        r.headers["Authorization"] = f"Bearer {self.bearer}"
+        return r
+
+
+
 class RestPager(BaseModel, Generic[T]):
 
-    user: str
-    token: SecretStr
+    user: Optional[str]
+    token: Optional[SecretStr]
     url: HttpUrl
     page_size: int = DEFAULT_PAGE_SIZE
     total_param: Optional[str] = None
+    bearer: Optional[SecretStr]
+
 
     def update_params(self, query_params: T) -> T:
         raise NotImplementedError
@@ -48,10 +68,14 @@ class RestPager(BaseModel, Generic[T]):
             path = path.replace(self.url, "")
 
         def make_request(query_params: T):
+            if self.user and self.token:
+                auth = HTTPBasicAuth(self.user, self.token.get_secret_value())
+            if self.bearer:
+                auth = HTTPBearer(self.bearer.get_secret_value())
             response = requests.get(
                 f"{self.url}{path}",
                 params=query_params,
-                auth=HTTPBasicAuth(self.user, self.token.get_secret_value()),
+                auth=auth,
             )
             if response.status_code in (404, 409, 204):
                 return []

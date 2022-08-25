@@ -1,3 +1,6 @@
+from asyncore import write
+from http.client import HTTP_PORT
+from lib2to3.pgen2 import token
 import click
 from calcifer.services.jira_pager import JiraPager
 from calcifer.commands.jira import (
@@ -10,6 +13,7 @@ from pathlib import Path
 from calcifer.utils.file_writer import write_to_file
 
 from calcifer.services.github_rest_manager import GithubRestManager
+from calcifer.services.auth0_pager import Auth0Pager, get_default_auth0_query_param
 from calcifer.commands.github import (
     Repo,
     RepoProtectionInfo,
@@ -359,6 +363,30 @@ def issues_change_status_log(
     change_log = get_issues_change_logs(jira_pager, issues)
     write_to_file(out_file_path, change_log)
 
+@click.command()
+@click.option("--auth0-token", envvar="AUTH0_TOKEN", type=SecretStr, required=True)
+@click.option("--auth0-url", envvar="AUTH0_URL", type=str, required=True, default="https://credimi.eu.auth0.com/api/v2")
+def auth0_logs(auth0_token: SecretStr, auth0_url: HttpUrl):
+    auth0_pager = Auth0Pager(bearer=auth0_token, url=auth0_url)
+    params = get_default_auth0_query_param().copy()
+    params["q"] = "client_name%3D\"Futuro User Platform\""
+    logs =  auth0_pager.get_all_pages(path="/logs", query_params=params, collection_name=None, show_progress=False, stop_if=lambda x: x["date"] < "2022-02-15")
+    for log in logs:
+        log["error_message"] = log.get("details", {}).get("error", {}).get("message", "")
+        log["error_oauth_error"] = log.get("details", {}).get("error", {}).get("oauthError", "")
+        log["error_type"] = log.get("details", {}).get("error", {}).get("type", "")
+        for field in ('strategy', 'connection', 'strategy_type', 'session_connection', 'audience', 'scope'):
+            if field not in log:
+                log[field] = ''
+        if "details" in log:
+            log.pop("details")
+    import json
+    with open('json_data.json', 'w') as outfile:
+        json.dump(logs, outfile)
+
+    write_to_file("auth0_data.csv", logs)
+
+
 
 @click.group()
 def cli():
@@ -403,3 +431,6 @@ cli.add_command(repo_last_commit)
 # Jira commands
 cli.add_command(issues_with_comments_by)
 cli.add_command(issues_change_status_log)
+
+# Auth0
+cli.add_command(auth0_logs)
