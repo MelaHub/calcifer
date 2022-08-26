@@ -38,17 +38,16 @@ class HTTPBearer(AuthBase):
 
 
 
-class RestPager(BaseModel, Generic[T]):
+class RestPager(Generic[T]):
 
-    user: Optional[str]
-    token: Optional[SecretStr]
     url: HttpUrl
     page_size: int = DEFAULT_PAGE_SIZE
     total_param: Optional[str] = None
     bearer: Optional[SecretStr]
+    auth: AuthBase
 
 
-    def update_params(self, query_params: T) -> T:
+    def update_params(self, query_params: T, last_results: list[dict]) -> T:
         raise NotImplementedError
 
     def get_all_pages(
@@ -68,14 +67,10 @@ class RestPager(BaseModel, Generic[T]):
             path = path.replace(self.url, "")
 
         def make_request(query_params: T):
-            if self.user and self.token:
-                auth = HTTPBasicAuth(self.user, self.token.get_secret_value())
-            if self.bearer:
-                auth = HTTPBearer(self.bearer.get_secret_value())
             response = requests.get(
                 f"{self.url}{path}",
                 params=query_params,
-                auth=auth,
+                auth=self.auth,
             )
             if response.status_code in (404, 409, 204):
                 return []
@@ -125,8 +120,8 @@ class RestPager(BaseModel, Generic[T]):
                 if len(curr_res):
                     if stop_if(curr_res[0]):
                         break
-                    query_params = self.update_params(query_params)
                     valid_results = [map_item(res) for res in curr_res]
+                    query_params = self.update_params(query_params, valid_results)
                     data += valid_results
                 else:
                     break

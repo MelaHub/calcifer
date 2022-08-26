@@ -2,6 +2,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 from typing import Optional
 from calcifer.services.rest_pager import DEFAULT_PAGE_SIZE, QueryParams, RestPager
+from pydantic import SecretStr, HttpUrl
 
 
 class GithubQueryParam(QueryParams):
@@ -15,7 +16,12 @@ def get_default_github_query_param() -> GithubQueryParam:
 
 
 class GithubRestManager(RestPager[GithubQueryParam]):
-    def update_params(self, query_params: GithubQueryParam) -> GithubQueryParam:
+
+    def __init__(self, url: HttpUrl, user: str, token: SecretStr) -> None:
+        self.url = url
+        self.auth = HTTPBasicAuth(user, token.get_secret_value())
+
+    def update_params(self, query_params: GithubQueryParam, last_results: list[dict]) -> GithubQueryParam:
         new_params = query_params.copy()
         new_params["page"] += 1
         return new_params
@@ -45,7 +51,7 @@ class GithubRestManager(RestPager[GithubQueryParam]):
     ) -> Optional[dict]:
         response = requests.get(
             f"https://api.github.com/repos/{github_org}/{github_repo_name}/contents/{file_name}",
-            auth=HTTPBasicAuth(self.user, self.token.get_secret_value()),
+            auth=self.auth,
         )
         if response.status_code == 404:
             return None

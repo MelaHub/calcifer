@@ -13,7 +13,7 @@ from pathlib import Path
 from calcifer.utils.file_writer import write_to_file
 
 from calcifer.services.github_rest_manager import GithubRestManager
-from calcifer.services.auth0_pager import Auth0Pager, get_default_auth0_query_param
+from calcifer.services.auth0_pager import Auth0Pager, get_default_auth0_query_param, Auth0LogsParam
 from calcifer.commands.github import (
     Repo,
     RepoProtectionInfo,
@@ -34,7 +34,7 @@ from calcifer.commands.github import (
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--n-contrib", type=int, default=3)
@@ -59,7 +59,7 @@ def top_contributors(
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
@@ -84,7 +84,7 @@ def first_contribution(
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
 @click.option("--tag", type=str, required=True)
@@ -115,7 +115,7 @@ def __get_empty_repos(
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
 @click.option("--out-file-path", type=str, required=True)
@@ -141,7 +141,7 @@ def __get_repos_not_on_main(repos: list[Repo]) -> list[Repo]:
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
 @click.option("--out-file-path", type=str, required=True)
@@ -162,7 +162,7 @@ def repos_not_on_main(
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
 @click.option("--out-file-path", type=str, required=True)
@@ -191,7 +191,7 @@ def __get_repo_protection_info(
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
@@ -232,7 +232,7 @@ def unprotected_repos(
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
@@ -253,7 +253,7 @@ def repo_last_commit(
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
@@ -305,7 +305,7 @@ def repos_info(
 
 @click.command()
 @click.option("--jira-user", envvar="JIRA_USER", type=str, required=True)
-@click.option("--jira-api-token", envvar="JIRA_API_TOKEN", type=str, required=True)
+@click.option("--jira-api-token", envvar="JIRA_API_TOKEN", type=SecretStr, required=True)
 @click.option(
     "--jira-url",
     envvar="JIRA_URL",
@@ -328,7 +328,7 @@ def issues_with_comments_by(
     since: str,
     out_file_path: Path,
 ):
-    jira_pager = JiraPager(user=jira_user, token=jira_api_token, url=jira_url)
+    jira_pager = JiraPager(jira_url, jira_user, jira_api_token)
     issues = get_issues_for_project(jira_pager, jira_project, since)
     issues_comments = get_comments_by_issue(jira_pager, issues, search_for_user)
     write_to_file(out_file_path, issues_comments)
@@ -336,7 +336,7 @@ def issues_with_comments_by(
 
 @click.command()
 @click.option("--jira-user", envvar="JIRA_USER", type=str, required=True)
-@click.option("--jira-api-token", envvar="JIRA_API_TOKEN", type=str, required=True)
+@click.option("--jira-api-token", envvar="JIRA_API_TOKEN", type=SecretStr, required=True)
 @click.option(
     "--jira-url",
     envvar="JIRA_URL",
@@ -358,7 +358,7 @@ def issues_change_status_log(
     out_file_path: Path,
 ):
     """This command retrieves the list of all status changes for all issues created from `since` of project `jira_project`."""
-    jira_pager = JiraPager(user=jira_user, token=jira_api_token, url=jira_url)
+    jira_pager = JiraPager(jira_url, jira_user, jira_api_token)
     issues = get_issues_for_project(jira_pager, jira_project, since)
     change_log = get_issues_change_logs(jira_pager, issues)
     write_to_file(out_file_path, change_log)
@@ -370,21 +370,34 @@ def auth0_logs(auth0_token: SecretStr, auth0_url: HttpUrl):
     auth0_pager = Auth0Pager(bearer=auth0_token, url=auth0_url)
     params = get_default_auth0_query_param().copy()
     params["q"] = "client_name%3D\"Futuro User Platform\""
-    logs =  auth0_pager.get_all_pages(path="/logs", query_params=params, collection_name=None, show_progress=False, stop_if=lambda x: x["date"] < "2022-02-15")
+    params = Auth0LogsParam(take=100, q="client_name%3D\"Futuro User Platform\"")
+    params["from"] = "90020220726172533043146268980369788059798263149755367490"
+    # logs =  auth0_pager.get_all_pages(path="/logs", query_params=params, collection_name=None, show_progress=False)
+    import json
+    # with open('json_data_all.json', 'w') as outfile:
+    #     json.dump(logs, outfile)
+    with open('json_data_all.json') as json_file:
+        logs = json.load(json_file)
     for log in logs:
-        log["error_message"] = log.get("details", {}).get("error", {}).get("message", "")
-        log["error_oauth_error"] = log.get("details", {}).get("error", {}).get("oauthError", "")
-        log["error_type"] = log.get("details", {}).get("error", {}).get("type", "")
-        for field in ('strategy', 'connection', 'strategy_type', 'session_connection', 'audience', 'scope'):
+        error = log.get("details", {}).get("error", {})
+        if type(error) == str:
+            log["error_message"] = error
+            log["error_oauth_error"] = ""
+            log["error_type"] = ""
+        else:    
+            log["error_message"] = log.get("details", {}).get("error", {}).get("message", "")
+            log["error_oauth_error"] = log.get("details", {}).get("error", {}).get("oauthError", "")
+            log["error_type"] = log.get("details", {}).get("error", {}).get("type", "")
+        for field in ('strategy', 'connection', 'strategy_type', 'session_connection', 'audience', 'scope', 'description', 'auth0_client', 'tracking_id'):
             if field not in log:
                 log[field] = ''
         if "details" in log:
             log.pop("details")
     import json
-    with open('json_data.json', 'w') as outfile:
+    with open('json_data_all_flatten.json', 'w') as outfile:
         json.dump(logs, outfile)
 
-    write_to_file("auth0_data.csv", logs)
+    write_to_file("auth0_data_all_flatten.csv", logs)
 
 
 
