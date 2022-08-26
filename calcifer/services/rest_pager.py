@@ -1,10 +1,8 @@
-from http.client import HTTPResponse
 import requests
-from requests.auth import HTTPBasicAuth, AuthBase
-from requests import Response
+from requests.auth import AuthBase
 from tqdm import tqdm
 import json
-from pydantic import SecretStr, BaseModel, HttpUrl
+from pydantic import SecretStr, HttpUrl
 from typing import Callable, TypedDict, Generic, TypeVar, Optional
 from calcifer.utils.json_logger import logger
 from pydantic.generics import GenericModel
@@ -40,10 +38,9 @@ class HTTPBearer(AuthBase):
         return r
 
 
-
 class HttpErrorException(Exception):
     message: str
-    response: GenericModel 
+    response: GenericModel
 
 
 class RestPager(Generic[T]):
@@ -53,7 +50,6 @@ class RestPager(Generic[T]):
     total_param: Optional[str] = None
     bearer: Optional[SecretStr]
     auth: AuthBase
-
 
     def update_params(self, query_params: T, last_results: list[dict]) -> T:
         raise NotImplementedError
@@ -82,7 +78,9 @@ class RestPager(Generic[T]):
             )
             if response.status_code in (400, 404, 409, 204):
                 if response.status_code == 400:
-                    logger.warn(f"Call to {response.request.method}/{response.request.url} {response.request.body} returned 400")
+                    logger.warn(
+                        f"Call to {response.request.method}/{response.request.url} {response.request.body} returned 400"
+                    )
                 return []
             elif response.status_code == 200:
                 return json.loads(response.content)
@@ -91,7 +89,10 @@ class RestPager(Generic[T]):
                     f"Failed call {response.request.method}/{response.request.url} {response.request.body} "
                     f"with response {response.status_code} {response.content}"
                 )
-                raise HttpErrorException(message="Something went wrong while calling the github api", response=response)
+                raise HttpErrorException(
+                    message="Something went wrong while calling the github api",
+                    response=response,
+                )
 
         data = []
 

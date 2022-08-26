@@ -16,12 +16,13 @@ def get_default_github_query_param() -> GithubQueryParam:
 
 
 class GithubRestManager(RestPager[GithubQueryParam]):
-
     def __init__(self, url: HttpUrl, user: str, token: SecretStr) -> None:
         self.url = url
         self.auth = HTTPBasicAuth(user, token.get_secret_value())
 
-    def update_params(self, query_params: GithubQueryParam, last_results: list[dict]) -> GithubQueryParam:
+    def update_params(
+        self, query_params: GithubQueryParam, last_results: list[dict]
+    ) -> GithubQueryParam:
         new_params = query_params.copy()
         new_params["page"] += 1
         return new_params

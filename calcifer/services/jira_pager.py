@@ -15,13 +15,14 @@ def get_default_query_param() -> JiraQueryParam:
 
 
 class JiraPager(RestPager):
-
     def __init__(self, url: HttpUrl, user: str, token: SecretStr) -> None:
         self.url = url
         self.total_param = "total"
         self.auth = HTTPBasicAuth(user, token.get_secret_value())
 
-    def update_params(self, query_params: JiraQueryParam, last_results: list[dict]) -> JiraQueryParam:
+    def update_params(
+        self, query_params: JiraQueryParam, last_results: list[dict]
+    ) -> JiraQueryParam:
         new_params = query_params.copy()
         new_params["startAt"] += self.page_size
         return new_params
