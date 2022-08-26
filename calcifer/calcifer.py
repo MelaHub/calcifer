@@ -2,6 +2,7 @@ from asyncore import write
 from http.client import HTTP_PORT
 from lib2to3.pgen2 import token
 import click
+from typing import Optional
 from calcifer.services.jira_pager import JiraPager
 from calcifer.commands.jira import (
     get_issues_for_project,
@@ -13,7 +14,8 @@ from pathlib import Path
 from calcifer.utils.file_writer import write_to_file
 
 from calcifer.services.github_rest_manager import GithubRestManager
-from calcifer.services.auth0_pager import Auth0Pager, get_default_auth0_query_param, Auth0LogsParam
+from calcifer.services.auth0_pager import Auth0FromLogIdPager, Auth0LatestLogsPager
+from calcifer.commands.auth0 import get_auth0_events_after_log_id, get_auth0_latest_events
 from calcifer.commands.github import (
     Repo,
     RepoProtectionInfo,
@@ -366,18 +368,26 @@ def issues_change_status_log(
 @click.command()
 @click.option("--auth0-token", envvar="AUTH0_TOKEN", type=SecretStr, required=True)
 @click.option("--auth0-url", envvar="AUTH0_URL", type=str, required=True, default="https://credimi.eu.auth0.com/api/v2")
-def auth0_logs(auth0_token: SecretStr, auth0_url: HttpUrl):
-    auth0_pager = Auth0Pager(bearer=auth0_token, url=auth0_url)
-    params = get_default_auth0_query_param().copy()
-    params["q"] = "client_name%3D\"Futuro User Platform\""
-    params = Auth0LogsParam(take=100, q="client_name%3D\"Futuro User Platform\"")
-    params["from"] = "90020220726172533043146268980369788059798263149755367490"
-    # logs =  auth0_pager.get_all_pages(path="/logs", query_params=params, collection_name=None, show_progress=False)
-    import json
-    # with open('json_data_all.json', 'w') as outfile:
-    #     json.dump(logs, outfile)
-    with open('json_data_all.json') as json_file:
-        logs = json.load(json_file)
+@click.option("--auth0-from-log-id", envvar="FROM_EVENT_ID", type=str, required=False)
+@click.option("--auth0-search_str", type=str, required=False, default="client_name%3D\"Futuro User Platform\"")
+@click.option("--out-file-path", type=str, required=True)
+def auth0_logs(auth0_token: SecretStr, auth0_url: HttpUrl, auth0_from_log_id: Optional[str], auth0_search_str: Optional[str], out_file_path: Path):
+    """Retrieves all event logs from auth0.
+
+    If auth0-from-log-id is given as input, then all events after that log id are fecthed. Else, only
+    the last 1000 commits will be retrieved. This is a limitation of auth0 APIs, if you try to go back in time 
+    for more than 1000 commits, you'll get the following error message:
+
+    Requesting page 11 exceeds the allowed maximum of 1000 records: please consider searching by checkpoint 
+    https://auth0.com/docs/logs/retrieve-log-events-using-mgmt-api#retrieve-logs-by-checkpoint
+    """
+    if auth0_from_log_id:
+        auth0_pager = Auth0FromLogIdPager(bearer=auth0_token, url=auth0_url)
+        logs = get_auth0_events_after_log_id(auth0_pager, auth0_from_log_id, auth0_search_str)
+    else:
+        auth0_pager = Auth0LatestLogsPager(bearer=auth0_token, url=auth0_url)
+        logs = get_auth0_latest_events(auth0_pager, auth0_search_str)
+
     for log in logs:
         error = log.get("details", {}).get("error", {})
         if type(error) == str:
@@ -388,16 +398,13 @@ def auth0_logs(auth0_token: SecretStr, auth0_url: HttpUrl):
             log["error_message"] = log.get("details", {}).get("error", {}).get("message", "")
             log["error_oauth_error"] = log.get("details", {}).get("error", {}).get("oauthError", "")
             log["error_type"] = log.get("details", {}).get("error", {}).get("type", "")
-        for field in ('strategy', 'connection', 'strategy_type', 'session_connection', 'audience', 'scope', 'description', 'auth0_client', 'tracking_id'):
+        for field in ('client_name', 'user_name', 'client_id', 'user_id', 'strategy', 'connection', 'strategy_type', 'session_connection', 'audience', 'scope', 'description', 'auth0_client', 'tracking_id'):
             if field not in log:
                 log[field] = ''
         if "details" in log:
             log.pop("details")
-    import json
-    with open('json_data_all_flatten.json', 'w') as outfile:
-        json.dump(logs, outfile)
 
-    write_to_file("auth0_data_all_flatten.csv", logs)
+    write_to_file(out_file_path, logs)
 
 
 

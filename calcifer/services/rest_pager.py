@@ -1,10 +1,13 @@
+from http.client import HTTPResponse
 import requests
 from requests.auth import HTTPBasicAuth, AuthBase
+from requests import Response
 from tqdm import tqdm
 import json
 from pydantic import SecretStr, BaseModel, HttpUrl
 from typing import Callable, TypedDict, Generic, TypeVar, Optional
 from calcifer.utils.json_logger import logger
+from pydantic.generics import GenericModel
 
 DEFAULT_PAGE_SIZE = 100
 
@@ -36,6 +39,11 @@ class HTTPBearer(AuthBase):
         r.headers["Authorization"] = f"Bearer {self.bearer}"
         return r
 
+
+
+class HttpErrorException(Exception):
+    message: str
+    response: GenericModel 
 
 
 class RestPager(Generic[T]):
@@ -72,7 +80,9 @@ class RestPager(Generic[T]):
                 params=query_params,
                 auth=self.auth,
             )
-            if response.status_code in (404, 409, 204):
+            if response.status_code in (400, 404, 409, 204):
+                if response.status_code == 400:
+                    logger.warn(f"Call to {response.request.method}/{response.request.url} {response.request.body} returned 400")
                 return []
             elif response.status_code == 200:
                 return json.loads(response.content)
@@ -81,7 +91,7 @@ class RestPager(Generic[T]):
                     f"Failed call {response.request.method}/{response.request.url} {response.request.body} "
                     f"with response {response.status_code} {response.content}"
                 )
-                raise Exception("Something went wrong while calling the github api")
+                raise HttpErrorException(message="Something went wrong while calling the github api", response=response)
 
         data = []
 
