@@ -1,10 +1,11 @@
 import requests
-from requests.auth import HTTPBasicAuth
+from requests.auth import AuthBase
 from tqdm import tqdm
 import json
-from pydantic import SecretStr, BaseModel, HttpUrl
+from pydantic import SecretStr, HttpUrl
 from typing import Callable, TypedDict, Generic, TypeVar, Optional
 from calcifer.utils.json_logger import logger
+from pydantic.generics import GenericModel
 
 DEFAULT_PAGE_SIZE = 100
 
@@ -20,15 +21,37 @@ class QueryParams(TypedDict):
 T = TypeVar("T", bound=QueryParams)
 
 
-class RestPager(BaseModel, Generic[T]):
+class HTTPBearer(AuthBase):
+    """Attaches HTTP Bearer to the given Request object."""
 
-    user: str
-    token: SecretStr
+    def __init__(self, bearer):
+        self.bearer = bearer
+
+    def __eq__(self, other):
+        return self.bearer == getattr(other, "bearer", None)
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __call__(self, r):
+        r.headers["Authorization"] = f"Bearer {self.bearer}"
+        return r
+
+
+class HttpErrorException(Exception):
+    message: str
+    response: GenericModel
+
+
+class RestPager(Generic[T]):
+
     url: HttpUrl
     page_size: int = DEFAULT_PAGE_SIZE
     total_param: Optional[str] = None
+    bearer: Optional[SecretStr]
+    auth: AuthBase
 
-    def update_params(self, query_params: T) -> T:
+    def update_params(self, query_params: T, last_results: list[dict]) -> T:
         raise NotImplementedError
 
     def get_all_pages(
@@ -51,9 +74,13 @@ class RestPager(BaseModel, Generic[T]):
             response = requests.get(
                 f"{self.url}{path}",
                 params=query_params,
-                auth=HTTPBasicAuth(self.user, self.token.get_secret_value()),
+                auth=self.auth,
             )
-            if response.status_code in (404, 409, 204):
+            if response.status_code in (400, 404, 409, 204):
+                if response.status_code == 400:
+                    logger.warn(
+                        f"Call to {response.request.method}/{response.request.url} {response.request.body} returned 400"
+                    )
                 return []
             elif response.status_code == 200:
                 return json.loads(response.content)
@@ -62,7 +89,10 @@ class RestPager(BaseModel, Generic[T]):
                     f"Failed call {response.request.method}/{response.request.url} {response.request.body} "
                     f"with response {response.status_code} {response.content}"
                 )
-                raise Exception("Something went wrong while calling the github api")
+                raise HttpErrorException(
+                    message="Something went wrong while calling the github api",
+                    response=response,
+                )
 
         data = []
 
@@ -101,8 +131,8 @@ class RestPager(BaseModel, Generic[T]):
                 if len(curr_res):
                     if stop_if(curr_res[0]):
                         break
-                    query_params = self.update_params(query_params)
                     valid_results = [map_item(res) for res in curr_res]
+                    query_params = self.update_params(query_params, valid_results)
                     data += valid_results
                 else:
                     break

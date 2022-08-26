@@ -1,4 +1,5 @@
 import click
+from typing import Optional
 from calcifer.services.jira_pager import JiraPager
 from calcifer.commands.jira import (
     get_issues_for_project,
@@ -10,6 +11,12 @@ from pathlib import Path
 from calcifer.utils.file_writer import write_to_file
 
 from calcifer.services.github_rest_manager import GithubRestManager
+from calcifer.services.auth0_pager import Auth0FromLogIdPager, Auth0LatestLogsPager
+from calcifer.commands.auth0 import (
+    get_auth0_events_after_log_id,
+    get_auth0_latest_events,
+    flatten_logs,
+)
 from calcifer.commands.github import (
     Repo,
     RepoProtectionInfo,
@@ -30,7 +37,7 @@ from calcifer.commands.github import (
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--n-contrib", type=int, default=3)
@@ -55,7 +62,7 @@ def top_contributors(
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
@@ -80,7 +87,7 @@ def first_contribution(
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
 @click.option("--tag", type=str, required=True)
@@ -111,7 +118,7 @@ def __get_empty_repos(
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
 @click.option("--out-file-path", type=str, required=True)
@@ -137,7 +144,7 @@ def __get_repos_not_on_main(repos: list[Repo]) -> list[Repo]:
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
 @click.option("--out-file-path", type=str, required=True)
@@ -158,7 +165,7 @@ def repos_not_on_main(
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
 @click.option("--out-file-path", type=str, required=True)
@@ -187,7 +194,7 @@ def __get_repo_protection_info(
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
@@ -228,7 +235,7 @@ def unprotected_repos(
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
@@ -249,7 +256,7 @@ def repo_last_commit(
 
 @click.command()
 @click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
-@click.option("--github-token", envvar="GITHUB_TOKEN", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
@@ -301,7 +308,9 @@ def repos_info(
 
 @click.command()
 @click.option("--jira-user", envvar="JIRA_USER", type=str, required=True)
-@click.option("--jira-api-token", envvar="JIRA_API_TOKEN", type=str, required=True)
+@click.option(
+    "--jira-api-token", envvar="JIRA_API_TOKEN", type=SecretStr, required=True
+)
 @click.option(
     "--jira-url",
     envvar="JIRA_URL",
@@ -324,7 +333,7 @@ def issues_with_comments_by(
     since: str,
     out_file_path: Path,
 ):
-    jira_pager = JiraPager(user=jira_user, token=jira_api_token, url=jira_url)
+    jira_pager = JiraPager(jira_url, jira_user, jira_api_token)
     issues = get_issues_for_project(jira_pager, jira_project, since)
     issues_comments = get_comments_by_issue(jira_pager, issues, search_for_user)
     write_to_file(out_file_path, issues_comments)
@@ -332,7 +341,9 @@ def issues_with_comments_by(
 
 @click.command()
 @click.option("--jira-user", envvar="JIRA_USER", type=str, required=True)
-@click.option("--jira-api-token", envvar="JIRA_API_TOKEN", type=str, required=True)
+@click.option(
+    "--jira-api-token", envvar="JIRA_API_TOKEN", type=SecretStr, required=True
+)
 @click.option(
     "--jira-url",
     envvar="JIRA_URL",
@@ -354,10 +365,60 @@ def issues_change_status_log(
     out_file_path: Path,
 ):
     """This command retrieves the list of all status changes for all issues created from `since` of project `jira_project`."""
-    jira_pager = JiraPager(user=jira_user, token=jira_api_token, url=jira_url)
+    jira_pager = JiraPager(jira_url, jira_user, jira_api_token)
     issues = get_issues_for_project(jira_pager, jira_project, since)
     change_log = get_issues_change_logs(jira_pager, issues)
     write_to_file(out_file_path, change_log)
+
+
+@click.command()
+@click.option("--auth0-token", envvar="AUTH0_TOKEN", type=SecretStr, required=True)
+@click.option(
+    "--auth0-url",
+    envvar="AUTH0_URL",
+    type=str,
+    required=True,
+    default="https://credimi.eu.auth0.com/api/v2",
+)
+@click.option("--auth0-from-log-id", envvar="FROM_EVENT_ID", type=str, required=False)
+@click.option(
+    "--auth0-search_str",
+    type=str,
+    required=False,
+    default='client_name%3D"Futuro User Platform"',
+)
+@click.option("--out-file-path", type=str, required=True)
+def auth0_logs(
+    auth0_token: SecretStr,
+    auth0_url: HttpUrl,
+    auth0_from_log_id: Optional[str],
+    auth0_search_str: Optional[str],
+    out_file_path: Path,
+):
+    """Retrieves all event logs from auth0.
+
+    If auth0-from-log-id is given as input, then all events after that log id are fecthed. Else, only
+    the last 1000 commits will be retrieved. This is a limitation of auth0 APIs, if you try to go back in time
+    for more than 1000 commits, you'll get the following error message:
+
+    Requesting page 11 exceeds the allowed maximum of 1000 records: please consider searching by checkpoint
+    https://auth0.com/docs/logs/retrieve-log-events-using-mgmt-api#retrieve-logs-by-checkpoint
+
+    The easiest way to retrieve the log id is to use the UI, go to the search page, select the earliest date and select
+    the earliest entry from the result page.
+    """
+    if auth0_from_log_id:
+        auth0_pager = Auth0FromLogIdPager(bearer=auth0_token, url=auth0_url)
+        logs = get_auth0_events_after_log_id(
+            auth0_pager, auth0_from_log_id, auth0_search_str
+        )
+    else:
+        auth0_pager = Auth0LatestLogsPager(bearer=auth0_token, url=auth0_url)
+        logs = get_auth0_latest_events(auth0_pager, auth0_search_str)
+
+    flatten_logs(logs)
+
+    write_to_file(out_file_path, logs)
 
 
 @click.group()
@@ -403,3 +464,6 @@ cli.add_command(repo_last_commit)
 # Jira commands
 cli.add_command(issues_with_comments_by)
 cli.add_command(issues_change_status_log)
+
+# Auth0
+cli.add_command(auth0_logs)
