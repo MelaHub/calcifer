@@ -403,6 +403,9 @@ def auth0_logs(
 
     Requesting page 11 exceeds the allowed maximum of 1000 records: please consider searching by checkpoint
     https://auth0.com/docs/logs/retrieve-log-events-using-mgmt-api#retrieve-logs-by-checkpoint
+
+    The easiest way to retrieve the log id is to use the UI, go to the search page, select the earliest date and select
+    the earliest entry from the result page.
     """
     if auth0_from_log_id:
         auth0_pager = Auth0FromLogIdPager(bearer=auth0_token, url=auth0_url)

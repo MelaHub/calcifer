@@ -1,6 +1,6 @@
 # calcifer
 
-A Python tool to fetch stats across all repos within an org.
+A Python tool to fetch stats across all repos within an org, Jira boards and Auth0 logs.
 
                                        /                                       
                                      */     ,                                   
@@ -41,5 +41,7 @@ Availabel commands are
 * jira
 ** issues-change-status-log: retrieves the list of status change of all Jira issues from a specific project created from a specific date
 ** issues-with-comments-by: retrieves the list of issues that had at least one comment from a specific person
+* auth0
+** auth0_logs: retrieves a list of event logs from auth0
 
 Note that all repos caches results in a temporary file. By running the command, you'll get the name of the file the cache is saved to, and to refresh the cache at the moment you need to manually delete the file.
