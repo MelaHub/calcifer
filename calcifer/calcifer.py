@@ -113,7 +113,7 @@ def __get_empty_repos(
     github_rest_manager: GithubRestManager, repos: list[Repo]
 ) -> list[str]:
     commits = get_repo_commit_number(github_rest_manager, repos)
-    return [commit["name"] for commit in commits if commit["commits"] == 0]
+    return [{"name": commit["name"]} for commit in commits if commit["commits"] == 0]
 
 
 @click.command()
@@ -271,7 +271,7 @@ def repos_info(
         user=github_user, token=github_token, url="https://api.github.com/"
     )
     repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
-    empty_repos = __get_empty_repos(github_rest_manager, repos)
+    empty_repos = [repo["name"] for repo in __get_empty_repos(github_rest_manager, repos)]
     repos_not_on_main = {repo["name"]: repo for repo in __get_repos_not_on_main(repos)}
     repos_with_missing_backstage = {
         repo["name"]: repo

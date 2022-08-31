@@ -192,10 +192,11 @@ def get_repo_commit_number(
     github_rest_manager: GithubRestManager, repos: list[Repo]
 ) -> list[RepoCommits]:
     logger.info("Retrieving number of commits")
-    repo_commits = get_repos_first_page_commits(github_rest_manager, repos)
+    repos_commits = get_repos_first_page_commits(github_rest_manager, repos)
     commits_num = []
-    for repo_name, commits in itertools.groupby(repo_commits, lambda x: x["repo"]):
-        commits_num.append({"name": repo_name, "commits": len([c for c in commits])})
+    for repo in repos:
+        repo_commits = [commit for commit in repos_commits if commit["repo"] == repo["name"]]
+        commits_num.append({"name": repo["name"], "commits": len(repo_commits)})
     return commits_num
 
 
