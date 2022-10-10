@@ -32,6 +32,7 @@ from calcifer.commands.github import (
     get_repos_protections,
     get_top_contributors,
     get_last_commit,
+    get_repos_languages,
 )
 
 
@@ -260,6 +261,35 @@ def repo_last_commit(
 @click.option("--github-org", type=str, required=True)
 @click.option("--out-file-path", type=str, required=True)
 @click.option("--ignore-repos", "-i", type=str, multiple=True)
+def repo_languages_and_bytes(
+    github_user: str,
+    github_token: SecretStr,
+    github_org: str,
+    out_file_path: Path,
+    ignore_repos: list[str],
+):
+    github_rest_manager = GithubRestManager(
+        user=github_user, token=github_token, url="https://api.github.com/"
+    )
+    repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
+    repo_languages = get_repos_languages(github_rest_manager, repos)
+    all_languages = set(lang for lang_list in [[lang for lang in repo_languages[repo]] for repo in repo_languages] for lang in lang_list)
+    repo_languages_lst = []
+    for repo in repo_languages:
+        repo_details = repo_languages[repo]
+        repo_details['name'] = repo
+        for lang in all_languages:
+            repo_details.setdefault(lang, 0)
+        repo_languages_lst.append(repo_details)
+    write_to_file(out_file_path, repo_languages_lst)
+
+
+@click.command()
+@click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
+@click.option("--github-org", type=str, required=True)
+@click.option("--out-file-path", type=str, required=True)
+@click.option("--ignore-repos", "-i", type=str, multiple=True)
 def repos_info(
     github_user: str,
     github_token: SecretStr,
@@ -460,6 +490,7 @@ cli.add_command(repos_not_on_main)
 cli.add_command(backstage_missing)
 cli.add_command(repos_info)
 cli.add_command(repo_last_commit)
+cli.add_command(repo_languages_and_bytes)
 
 # Jira commands
 cli.add_command(issues_with_comments_by)

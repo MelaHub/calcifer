@@ -1,3 +1,4 @@
+from functools import cache
 from typing import Callable
 from calcifer.models.github import (
     Repo,
@@ -101,6 +102,25 @@ def get_first_contributions(
         if len(contributions_by_repo):
             contributions.append(contributions_by_repo)
     return contributions
+
+
+@cache_to_file(file_prefix="github_languages")
+def get_repos_languages(github_rest_manager: GithubRestManager, repos: list):
+    print("Retrieving repo languages")
+    repo_languages = {}
+    for repo in tqdm(repos):
+        languages = get_languages_by_repo(github_rest_manager, repo)
+        repo_languages[repo["name"]] = languages
+    return repo_languages
+
+def get_languages_by_repo(github_rest_manager: GithubRestManager, repo: dict):
+    return github_rest_manager.get_all_pages(
+        repo["languages_url"],
+        get_default_github_query_param(),
+        None,
+        show_progress=False,
+        stop_if=get_first_page()
+    )[0]
 
 
 def get_first_contributions_by_author(
