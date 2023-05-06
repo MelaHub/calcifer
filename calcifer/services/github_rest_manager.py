@@ -20,6 +20,18 @@ class GithubRestManager(RestPager[GithubQueryParam]):
         self.url = url
         self.auth = HTTPBasicAuth(user, token.get_secret_value())
 
+    def set_default_branch_main(self, repo_path):
+        response = requests.post(
+            f"{self.url}repos/{repo_path}/branches/master/rename",
+            json={"new_name": "main"},
+            auth=self.auth
+        )
+        if response.status_code not in (200, 201, 204):
+            print(f"Something went wrong with {repo_path}: {response.status_code}")
+            # raise Exception(
+            #     f"Something went wrong while adding branch protection to {self.url}repos/{repo_path}"
+            # )
+
     def update_params(
         self, query_params: GithubQueryParam, last_results: list[dict]
     ) -> GithubQueryParam:

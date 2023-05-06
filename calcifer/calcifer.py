@@ -32,6 +32,7 @@ from calcifer.commands.github import (
     get_repos_protections,
     get_top_contributors,
     get_last_commit,
+    set_default_branch_on_main,
 )
 
 
@@ -161,6 +162,26 @@ def repos_not_on_main(
     )
     repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
     write_to_file(out_file_path, __get_repos_not_on_main(repos))
+
+
+@click.command()
+@click.option("--github-user", envvar="GITHUB_USER", type=str, required=True)
+@click.option("--github-token", envvar="GITHUB_TOKEN", type=SecretStr, required=True)
+@click.option("--github-org", type=str, required=True)
+@click.option("--ignore-repos", "-i", type=str, multiple=True)
+def set_default_branch_main(
+    github_user: str,
+    github_token: SecretStr,
+    github_org: str,
+    ignore_repos: list[str]
+):
+    """Retrieves all repos whose main branch is not called main and sets the default branch to main."""
+    github_rest_manager = GithubRestManager(
+        user=github_user, token=github_token, url="https://api.github.com/"
+    )
+    repos = get_all_repos(github_rest_manager, ignore_repos, github_org)
+    repos_not_on_main = __get_repos_not_on_main(repos)
+    set_default_branch_on_main(github_rest_manager, repos_not_on_main)
 
 
 @click.command()
@@ -460,6 +481,8 @@ cli.add_command(repos_not_on_main)
 cli.add_command(backstage_missing)
 cli.add_command(repos_info)
 cli.add_command(repo_last_commit)
+
+cli.add_command(set_default_branch_main)
 
 # Jira commands
 cli.add_command(issues_with_comments_by)

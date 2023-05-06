@@ -398,3 +398,11 @@ DEFAULT_PROTECTION = {
     "enforce_admins": False,
     "restrictions": None,
 }
+
+def set_default_branch_on_main(
+    github_rest_manager: GithubRestManager,
+    repos):
+    for repo in tqdm(repos):
+        print(f'Set repo {repo["full_name"]}')
+        github_rest_manager.set_default_branch_main(repo["full_name"])
+        
